@@ -1,0 +1,42 @@
+{
+  "title": "Recepción Administrativa - Acciones Registrar y Ver detalle desde la grilla",
+  "code": "CEI-1719",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 2,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Agregar acción Registrar en la grilla principal",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Agregar acción Ver detalle en la grilla principal",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Habilitar acción Registrar solo cuando el estado sea Pendiente",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Configurar navegación hacia las rutas descriptivas enviando el ID seleccionado",
+      "completed": false
+    }
+  ],
+  "objective": "Agregar las acciones Registrar y Ver detalle en la grilla principal de Recepción Administrativa y permitir navegar hacia las vistas correspondientes usando rutas descriptivas con el ID del registro.",
+  "services": [],
+  "requirements": [
+    "La acción Registrar solo debe mostrarse cuando el estado del registro sea Pendiente",
+    "Las rutas deben incluir el ID seleccionado",
+    "Las rutas deben ser descriptivas"
+  ],
+  "validations": [
+    "No debe permitirse registrar si el estado no es Pendiente",
+    "La navegación debe enviar correctamente el ID"
+  ]
+}

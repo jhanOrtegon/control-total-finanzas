@@ -1,0 +1,77 @@
+{
+  "title": "Grilla, filtros y paginación",
+  "code": "CEI-1701",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 4,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Crear tipado de los servicios para la pantalla",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Crear servicios para obtener el listado de recepciones administrativas",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Crear adaptadores para mapear la respuesta del backend",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Implementar filtros de búsqueda (fecha desde, fecha hasta y buscar)",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Implementar grilla con los campos definidos",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Implementar paginación del listado",
+      "completed": false
+    },
+    {
+      "id": "7",
+      "title": "Implementar menú de acciones (3 puntos) por registro",
+      "completed": false
+    }
+  ],
+  "objective": "Implementar la funcionalidad de consulta de recepciones administrativas mediante una grilla con filtros, paginación y acciones por registro.",
+  "services": [
+    {
+      "name": "Listado de recepciones administrativas",
+      "url": "/api/v1/administrative-receptions",
+      "method": "GET",
+      "params": "page, per_page, date_from, date_to, search",
+      "payload": {},
+      "response": {
+        "purchase_order_date": "2026-02-12",
+        "purchase_order_number": "OC-10234",
+        "nit": "900123456",
+        "provider": "Proveedor S.A",
+        "contract": "Contrato suministro",
+        "reception_date": "2026-02-18",
+        "status": "Pendiente"
+      }
+    }
+  ],
+  "requirements": [
+    "Implementar filtros de fecha desde y fecha hasta",
+    "Implementar búsqueda por número de orden, proveedor, NIT o contrato",
+    "Mostrar los resultados en una grilla",
+    "La grilla debe soportar paginación",
+    "Cada registro debe tener un menú de acciones"
+  ],
+  "validations": [
+    "Fecha desde no puede ser mayor que fecha hasta",
+    "Fecha hasta no puede ser menor que fecha desde",
+    "La búsqueda debe permitir coincidencias parciales"
+  ]
+}

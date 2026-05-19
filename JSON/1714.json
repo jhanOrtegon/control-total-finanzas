@@ -1,0 +1,55 @@
+{
+  "title": "Recepción Administrativa - Cálculos y validaciones en tabla de artículos",
+  "code": "CEI-1714",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 3,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions/create",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Implementar cálculo del subtotal sin IVA",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Implementar cálculo del IVA según configuración del artículo",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Implementar cálculo del total facturado",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Implementar comparativo entre recepción técnica y valor facturado",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Validar edición del valor unitario solo cuando exista ajuste de inventario",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Actualizar los valores calculados dinámicamente al modificar datos",
+      "completed": false
+    }
+  ],
+  "objective": "Implementar los cálculos y validaciones necesarias en la tabla de artículos para determinar los valores de subtotal, IVA, total facturado y comparativo entre la recepción técnica y la factura.",
+  "services": [],
+  "requirements": [
+    "El subtotal sin IVA debe calcularse como la suma de cantidad recibida multiplicada por valor unitario factura",
+    "El IVA debe calcularse según la configuración del artículo",
+    "El total facturado debe calcularse como subtotal más IVA menos descuentos",
+    "Debe mostrarse el comparativo entre el valor de recepción técnica y el valor facturado",
+    "El valor unitario solo puede modificarse si existe ajuste de inventario"
+  ],
+  "validations": [
+    "Los cálculos deben actualizarse automáticamente al modificar los valores",
+    "No se debe permitir modificar el valor unitario si no existe ajuste de inventario",
+    "Los cálculos deben reflejar correctamente los valores mostrados en la tabla"
+  ]
+}

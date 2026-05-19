@@ -1,0 +1,54 @@
+{
+  "title": "Recepción Administrativa - Servicio de detalle y componente base de visualización",
+  "code": "CEI-1721",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 3,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Implementar servicio para obtener el detalle de la recepción administrativa",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Crear tipado o modelo de datos para el detalle",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Crear componente de detalle reutilizable basado en la pantalla de crear",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Configurar el componente para mostrar los campos en modo solo lectura",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Agregar los tabs Recepción y Nota de crédito",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Bloquear el tab de Nota de crédito",
+      "completed": false
+    }
+  ],
+  "objective": "Consumir el servicio de detalle y crear un componente base reutilizable para visualizar la información de una recepción administrativa, reutilizando la estructura de la pantalla de creación pero con los campos bloqueados.",
+  "services": [
+    "GET /administrative-receptions/{id}"
+  ],
+  "requirements": [
+    "El componente debe reutilizar la estructura del formulario de creación",
+    "Todos los campos deben mostrarse en modo solo lectura",
+    "El tab Nota de crédito debe mostrarse bloqueado"
+  ],
+  "validations": [
+    "El servicio debe cargar correctamente los datos",
+    "Los campos no deben permitir edición"
+  ]
+}

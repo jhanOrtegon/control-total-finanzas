@@ -1,0 +1,85 @@
+{
+  "title": "Recepción Administrativa - Tipado, servicios y adaptadores",
+  "code": "CEI-1710",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 3,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions/create",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Crear servicio para obtener los datos del select de origen",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Crear servicio para obtener métodos de pago",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Crear servicio para obtener órdenes de compra",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Crear servicio para obtener artículos por orden de compra",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Crear tipado de los servicios",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Crear adaptadores para mapear la respuesta del backend",
+      "completed": false
+    }
+  ],
+  "objective": "Implementar los servicios, tipado y adaptadores necesarios para el flujo de creación de recepciones administrativas.",
+  "services": [
+    {
+      "name": "Listado de origen",
+      "url": "/api/v1/origins",
+      "method": "GET",
+      "params": "",
+      "payload": {},
+      "response": {}
+    },
+    {
+      "name": "Métodos de pago",
+      "url": "/api/v1/payment-methods",
+      "method": "GET",
+      "params": "",
+      "payload": {},
+      "response": {}
+    },
+    {
+      "name": "Órdenes de compra",
+      "url": "/api/v1/purchase-orders",
+      "method": "GET",
+      "params": "search, provider, provider_type",
+      "payload": {},
+      "response": {}
+    },
+    {
+      "name": "Artículos por orden de compra",
+      "url": "/api/v1/purchase-orders/{id}/items",
+      "method": "GET",
+      "params": "",
+      "payload": {},
+      "response": {}
+    }
+  ],
+  "requirements": [
+    "Crear los servicios necesarios para la pantalla",
+    "Crear tipado de las respuestas del backend",
+    "Crear adaptadores para transformar la respuesta a la estructura de la UI"
+  ],
+  "validations": [
+    "Los servicios deben manejar correctamente los parámetros requeridos",
+    "Los adaptadores deben mapear los datos utilizados en la UI"
+  ]
+}

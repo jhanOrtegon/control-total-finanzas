@@ -1,0 +1,76 @@
+{
+  "title": "Errores flujo de subasta",
+  "code": "CEI-1669",
+  "type": "bug",
+  "priority": "high",
+  "estimatedHours": 2,
+  "dueDate": "2026-03-21",
+  "featureName": "Corrección flujo de Subastas",
+  "screenPath": "/auctions",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Revisar persistencia del store en el flujo de creación de subasta",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Resetear el store al entrar a la pantalla de creación de subasta",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Validar que los campos del formulario no mantengan valores previos",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Reemplazar router.back(-1) por navegación explícita hacia /auctions",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Verificar navegación correcta desde todas las pantallas del flujo de subastas",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Realizar pruebas de navegación y estado del formulario",
+      "completed": false
+    }
+  ],
+  "objective": "Corregir errores detectados en el flujo de subastas donde los campos del formulario permanecen autocompletados debido al estado almacenado en el store. Además, corregir la navegación dentro de las pantallas de subasta para que al regresar se redireccione directamente a la ruta correspondiente en lugar de utilizar router.back(-1), evitando redirecciones incorrectas.",
+  "services": [
+    {
+      "name": "Crear subasta",
+      "url": "/api/v1/auctions",
+      "method": "POST",
+      "params": "",
+      "payload": {
+        "title": "Subasta ejemplo",
+        "auction_type": "open",
+        "start_date": "2026-03-21 10:00:00",
+        "end_date": "2026-03-22 18:00:00"
+      },
+      "response": {
+        "id": 101,
+        "title": "Subasta ejemplo",
+        "status": "created",
+        "message": "Subasta creada exitosamente"
+      }
+    }
+  ],
+  "requirements": [
+    "El estado del store debe reiniciarse al iniciar el flujo de creación de subasta",
+    "Los campos del formulario no deben mantener valores de una subasta anterior",
+    "Las acciones de navegación hacia atrás deben redirigir a rutas definidas",
+    "Eliminar el uso de router.back(-1) dentro del flujo de subastas",
+    "Garantizar consistencia en la navegación entre las pantallas del módulo"
+  ],
+  "validations": [
+    "Al ingresar a crear subasta todos los campos deben iniciar vacíos",
+    "Al abandonar la pantalla el store debe limpiarse",
+    "La navegación hacia atrás debe redirigir siempre a /auctions",
+    "No deben persistir datos en el formulario después de cerrar o abandonar el flujo"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "title": "Recepción Administrativa - Acción Registrar",
+  "code": "CEI-1722",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 2,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions/register/:id",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Cargar el componente de detalle con la información del servicio",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Mantener todos los campos bloqueados",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Agregar botón Cancelar",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Agregar botón Registrar",
+      "completed": false
+    }
+  ],
+  "objective": "Permitir registrar una recepción administrativa a partir de un registro pendiente cargando el componente de detalle en modo confirmación.",
+  "services": [],
+  "requirements": [
+    "Debe reutilizar el componente de detalle",
+    "Los campos deben mostrarse bloqueados",
+    "Debe permitir cancelar o confirmar el registro"
+  ],
+  "validations": [
+    "Solo se debe acceder si el estado es Pendiente",
+    "Los botones deben funcionar correctamente"
+  ]
+}

@@ -1,0 +1,115 @@
+"use client";
+
+import React from "react";
+import { Expense } from "@/types";
+import { useTheme } from "@/providers/theme-provider";
+import { formatCurrency } from "@/lib/utils";
+import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
+import { Tag, Edit3, Trash2, Eye } from "lucide-react";
+
+interface ExpenseCardProps {
+  expense: Expense;
+  isEditing: boolean;
+  onStartEdit: (expense: Expense) => void;
+  onDelete: (id: string) => void;
+  onViewDetail: (expense: Expense) => void;
+}
+
+export function ExpenseCard({
+  expense,
+  isEditing,
+  onStartEdit,
+  onDelete,
+  onViewDetail,
+}: ExpenseCardProps) {
+  const { theme } = useTheme();
+
+  return (
+    <div
+      className={`border rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition shadow-md relative overflow-hidden group ${
+        isEditing
+          ? theme === "dark"
+            ? "bg-indigo-950/20 border-indigo-500/70"
+            : "bg-indigo-50 border-indigo-500/60"
+          : theme === "dark"
+          ? "bg-slate-900/55 border-slate-800/80 hover:border-slate-700/80"
+          : "bg-white border-slate-200 hover:border-indigo-200/80 hover:shadow-lg hover:shadow-indigo-500/5"
+      }`}
+    >
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border shrink-0 ${getCategoryColor(expense.category)}`}>
+          {getCategoryEmoji(expense.category)}
+        </div>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className={`text-sm font-bold group-hover:text-indigo-500 transition ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
+              {expense.title}
+            </h4>
+            <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+              expense.type === "recurrent"
+                ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
+                : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
+            }`}>
+              {expense.type === "recurrent" ? "Mensual" : "Gasto Variable"}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-1 font-semibold">
+            <span className="flex items-center gap-1">
+              <Tag className="w-3.5 h-3.5 text-slate-400" /> {expense.category}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex sm:flex-col items-end justify-between sm:justify-center w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-800/60 shrink-0 gap-3">
+        <div className="flex items-baseline gap-1 text-right">
+          <span className={`text-base font-black ${theme === "dark" ? "text-white" : "text-slate-950"}`}>
+            {formatCurrency(expense.amount)}
+          </span>
+          <span className="text-[9px] text-slate-400 font-bold uppercase">COP</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onViewDetail(expense)}
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              theme === "dark"
+                ? "bg-slate-800 hover:bg-indigo-500/10 hover:text-indigo-400 border-slate-700/60 text-slate-400"
+                : "bg-slate-100 hover:bg-indigo-500/10 hover:text-indigo-500 border-slate-200 text-slate-500"
+            }`}
+            title="Ver Detalle"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => onStartEdit(expense)}
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              isEditing
+                ? "bg-indigo-600 border-indigo-600 text-white"
+                : theme === "dark"
+                ? "bg-slate-800 hover:bg-slate-700 border-slate-700/60 text-slate-400 hover:text-white"
+                : "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-500 hover:text-slate-800"
+            }`}
+            title="Editar Gasto"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => onDelete(expense.id)}
+            className={`p-1.5 rounded-lg border transition cursor-pointer ${
+              theme === "dark"
+                ? "bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500 border-slate-700/60 hover:border-rose-500/20 text-slate-400"
+                : "bg-slate-100 hover:bg-rose-500/10 hover:text-rose-500 border-slate-200 hover:border-rose-500/20 text-slate-500"
+            }`}
+            title="Eliminar Gasto"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

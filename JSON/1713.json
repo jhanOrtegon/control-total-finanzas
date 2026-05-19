@@ -1,0 +1,79 @@
+{
+  "title": "Recepción Administrativa - Formulario y tabla de artículos",
+  "code": "CEI-1713",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 5,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions/create",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Cambiar los check por select de cuentas",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Cambiar número de factura por campo de texto libre",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Implementar campo para adjuntar factura",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Implementar campo método de pago",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Implementar campo fecha de factura",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Implementar campo fecha vencimiento de factura",
+      "completed": false
+    },
+    {
+      "id": "7",
+      "title": "Implementar campo observaciones",
+      "completed": false
+    },
+    {
+      "id": "8",
+      "title": "Consumir servicio de artículos por orden de compra",
+      "completed": false
+    },
+    {
+      "id": "9",
+      "title": "Generar tabla de artículos asociados a la orden seleccionada",
+      "completed": false
+    }
+  ],
+  "objective": "Implementar el formulario de creación de recepciones administrativas y mostrar los artículos asociados a la orden de compra seleccionada.",
+  "services": [
+    {
+      "name": "Artículos por orden de compra",
+      "url": "/api/v1/purchase-orders/{id}/items",
+      "method": "GET",
+      "params": "",
+      "payload": {},
+      "response": {}
+    }
+  ],
+  "requirements": [
+    "Permitir adjuntar factura en formato PDF, JPG o PNG",
+    "El tamaño máximo del archivo debe ser 5 MB",
+    "La fecha de vencimiento no puede ser menor a la fecha de factura",
+    "El campo observaciones debe permitir máximo 1000 caracteres",
+    "Mostrar los artículos asociados a la orden seleccionada"
+  ],
+  "validations": [
+    "Solo se deben permitir archivos PDF, JPG o PNG",
+    "El tamaño máximo permitido es 5 MB",
+    "La fecha de vencimiento debe ser mayor o igual a la fecha de factura"
+  ]
+}

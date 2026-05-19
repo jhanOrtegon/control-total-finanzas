@@ -1,0 +1,110 @@
+{
+  "title": "Crear subasta de tipo cerrado",
+  "code": "CEI-1645",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 10,
+  "dueDate": "2026-03-20",
+  "featureName": "Subastas - Tipo Cerrado",
+  "screenPath": "/auctions/create",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Mostrar select de tipo de subasta (Abierto / Cerrado)",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Renderizar tabla de proveedores cuando el tipo de subasta sea Cerrado",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Agregar botón 'Agregar proveedor' debajo de la tabla de consolidaciones",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Implementar modal con listado de proveedores",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Agregar checkbox por fila para seleccionar uno o varios proveedores",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Agregar buscador con placeholder 'Buscar por Nombre...'",
+      "completed": false
+    },
+    {
+      "id": "7",
+      "title": "Agregar filtro tipo select para tipo de proveedor (Jurídico / Natural)",
+      "completed": false
+    },
+    {
+      "id": "8",
+      "title": "Consumir servicio de listado de proveedores con paginación",
+      "completed": false
+    },
+    {
+      "id": "9",
+      "title": "Permitir seleccionar múltiples proveedores y agregarlos a la tabla principal",
+      "completed": false
+    }
+  ],
+  "objective": "Implementar el flujo completo para la creación de subastas de tipo cerrado dentro del módulo de Compras e Inventario. Cuando el usuario seleccione el tipo de subasta 'Cerrado', se debe mostrar una sección adicional que permita gestionar proveedores invitados a la subasta mediante una tabla y un modal de selección de proveedores.",
+  "services": [
+    {
+      "name": "Listado de proveedores",
+      "url": "/api/v1/providers",
+      "method": "GET",
+      "params": "page, search, per_page, provider_type",
+      "payload": {},
+      "response": {
+        "results": [
+          {
+            "id": 590,
+            "document_number": "3232341",
+            "document_type": {
+              "id": 2,
+              "tag": "C.E"
+            },
+            "name": "Carlos Pérez",
+            "provider_type": "Persona Natural",
+            "created_at": "2025-07-03 10:04:53",
+            "status": {
+              "id": 119,
+              "name": "Aprobado",
+              "tag": "enabled"
+            }
+          }
+        ],
+        "success": true,
+        "message": "Proveedores obtenidos exitosamente.",
+        "rowTotal": 236,
+        "status": 200
+      }
+    }
+  ],
+  "requirements": [
+    "Cuando el tipo de subasta sea 'Cerrado' se debe mostrar una tabla de proveedores debajo de la tabla de consolidaciones",
+    "La tabla de proveedores debe incluir columnas: Código, Nombre/Razón Social, Tipo, Inscripción",
+    "Debe existir un botón 'Agregar proveedor' para abrir el modal de selección",
+    "El modal debe contener una tabla de proveedores con selección múltiple mediante checkbox",
+    "El buscador debe permitir filtrar proveedores por nombre",
+    "El placeholder del buscador debe ser 'Buscar por Nombre...'",
+    "Debe existir un filtro tipo select para tipo de proveedor con opciones: Jurídico y Natural",
+    "Los proveedores seleccionados en el modal deben agregarse a la tabla de proveedores de la subasta",
+    "La tabla debe permitir seleccionar múltiples proveedores"
+  ],
+  "validations": [
+    "El tipo de subasta debe estar seleccionado antes de mostrar la tabla de proveedores",
+    "Solo se debe mostrar la sección de proveedores cuando el tipo de subasta sea 'Cerrado'",
+    "El sistema debe permitir seleccionar uno o varios proveedores",
+    "No se deben permitir proveedores duplicados en la tabla de proveedores seleccionados",
+    "El servicio de proveedores debe soportar paginación",
+    "El filtro de tipo de proveedor debe aceptar valores 'legal' o 'natural'"
+  ]
+}

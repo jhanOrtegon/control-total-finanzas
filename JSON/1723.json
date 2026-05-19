@@ -1,0 +1,37 @@
+{
+  "title": "Recepción Administrativa - Vista de detalle",
+  "code": "CEI-1723",
+  "type": "feature",
+  "priority": "medium",
+  "estimatedHours": 1,
+  "featureName": "Recepción Administrativa",
+  "screenPath": "/administrative-receptions/detail/:id",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Cargar el componente de detalle con la información del servicio",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Mostrar los datos en modo solo lectura",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Ocultar botones de acción",
+      "completed": false
+    }
+  ],
+  "objective": "Permitir visualizar el detalle de una recepción administrativa desde la grilla principal en modo solo lectura.",
+  "services": [],
+  "requirements": [
+    "Debe reutilizar el componente de detalle",
+    "Todos los campos deben mostrarse bloqueados",
+    "No deben mostrarse botones de acción"
+  ],
+  "validations": [
+    "La información debe cargarse correctamente",
+    "No se debe permitir modificar los datos"
+  ]
+}

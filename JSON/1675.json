@@ -1,0 +1,121 @@
+{
+  "title": "Subasta - Flujo tab carrito - Orden de compra",
+  "code": "CEI-1675",
+  "type": "feature",
+  "priority": "high",
+  "estimatedHours": 4,
+  "dueDate": "2026-03-22",
+  "featureName": "Flujo Carrito - Generación Ordenes de Compra",
+  "screenPath": "/auctions/:id/in-progress",
+  "checklists": [
+    {
+      "id": "1",
+      "title": "Validar tipo de subasta desde el detalle para habilitar acción solo cuando sea múltiple",
+      "completed": false
+    },
+    {
+      "id": "2",
+      "title": "Habilitar acción en la tabla del carrito para abrir el modal de almacenes",
+      "completed": false
+    },
+    {
+      "id": "3",
+      "title": "Mover el modal de almacenes al flujo del carrito dentro de subastas",
+      "completed": false
+    },
+    {
+      "id": "4",
+      "title": "Permitir seleccionar un almacén por cada genérico en la tabla del carrito",
+      "completed": false
+    },
+    {
+      "id": "5",
+      "title": "Conectar el servicio de listado de almacenes aplicando el filtro requerido",
+      "completed": false
+    },
+    {
+      "id": "6",
+      "title": "Consultar con backend el nuevo parámetro de filtro del servicio de almacenes",
+      "completed": false
+    },
+    {
+      "id": "7",
+      "title": "Implementar tabla de órdenes de compra dentro del tab correspondiente",
+      "completed": false
+    },
+    {
+      "id": "8",
+      "title": "Agrupar los artículos por centro de costo del almacén usando acordeón",
+      "completed": false
+    },
+    {
+      "id": "9",
+      "title": "Mostrar los artículos asociados dentro de cada grupo de centro de costo",
+      "completed": false
+    },
+    {
+      "id": "10",
+      "title": "Realizar pruebas del flujo completo de selección de almacenes y generación de órdenes",
+      "completed": false
+    }
+  ],
+  "objective": "Completar el flujo de creación de subastas cuando la generación de órdenes de compra se realiza desde el tab Carrito. Se debe permitir seleccionar un almacén para cada genérico mediante un modal de selección y posteriormente mostrar las órdenes de compra agrupadas por centro de costo del almacén dentro de un acordeón en el tab correspondiente.",
+  "services": [
+    {
+      "name": "Listado de almacenes",
+      "url": "/api/v1/warehouses",
+      "method": "GET",
+      "params": "page, per_page, filter",
+      "payload": {},
+      "response": {
+        "results": [
+          {
+            "id": 10,
+            "name": "Almacén Central",
+            "cost_center": "CC-001",
+            "status": "enabled"
+          }
+        ],
+        "rowTotal": 25,
+        "success": true,
+        "message": "Almacenes obtenidos correctamente",
+        "status": 200
+      }
+    },
+    {
+      "name": "Generación de ordenes de compra desde carrito",
+      "url": "/api/v1/auctions/{id}/purchase-orders",
+      "method": "POST",
+      "params": "",
+      "payload": {
+        "items": [
+          {
+            "generic_id": 101,
+            "warehouse_id": 10
+          }
+        ]
+      },
+      "response": {
+        "success": true,
+        "message": "Ordenes de compra generadas correctamente"
+      }
+    }
+  ],
+  "requirements": [
+    "La acción de seleccionar almacén debe estar disponible solo cuando el tipo de subasta sea múltiple",
+    "El modal de almacenes debe abrirse desde la tabla del carrito",
+    "El modal de almacenes no debe pertenecer al flujo de órdenes de compra",
+    "El usuario debe poder seleccionar un almacén para cada genérico del carrito",
+    "El servicio de almacenes debe soportar un filtro adicional definido por backend",
+    "Las órdenes de compra deben visualizarse agrupadas por centro de costo del almacén",
+    "Cada grupo debe mostrarse usando un acordeón",
+    "Los artículos deben listarse dentro del grupo correspondiente a su centro de costo"
+  ],
+  "validations": [
+    "La acción de abrir el modal debe estar deshabilitada si el tipo de subasta no es múltiple",
+    "Cada genérico debe tener un almacén asignado antes de generar las órdenes de compra",
+    "No se deben generar órdenes sin almacén seleccionado",
+    "Los artículos deben mostrarse correctamente agrupados por centro de costo",
+    "El acordeón debe permitir expandir y contraer cada grupo de centro de costo"
+  ]
+}

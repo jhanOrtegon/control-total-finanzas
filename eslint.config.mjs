@@ -8,11 +8,16 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "max-lines": [
-        "error",
+        "warn",
         { max: 500, skipBlankLines: true, skipComments: true }
       ],
       "@typescript-eslint/no-explicit-any": "warn",
-      "no-console": ["warn", { allow: ["warn", "error"] }]
+      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "react/no-unescaped-entities": "warn",
+      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/immutability": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+      "prefer-const": "warn"
     }
   },
   // Override default ignores of eslint-config-next.

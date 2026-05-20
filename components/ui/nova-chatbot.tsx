@@ -13,6 +13,7 @@ type Message = {
 
 type AssistantState = "ready" | "degraded" | "offline";
 type SizeMode = "compact" | "balanced" | "large";
+const CHAT_TIMEOUT_MS = 45_000;
 
 export function NovaChatbot() {
   const [showStatus, setShowStatus] = useState(false);
@@ -116,7 +117,7 @@ export function NovaChatbot() {
     setIsLoading(true);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000);
+    const timeoutId = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
 
     try {
       const response = await fetch("/api/chat", {

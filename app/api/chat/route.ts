@@ -12,11 +12,18 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
+const MODEL_TIMEOUT_MS = 45_000;
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const normalizeNumberString = (value: unknown, fallback: string) => {
   if (typeof value === "string" && value.trim().length > 0) return value;
   return fallback;
+};
+
+type ChatInputMessage = {
+  role: "user" | "assistant";
+  content: string;
 };
 
 const resolveModelsToTry = () => {
@@ -53,13 +60,14 @@ export async function POST(req: Request) {
     const context = (body?.context ?? {}) as Record<string, unknown>;
 
     const messages = rawMessages
-      .filter(
-        (m) =>
-          m &&
-          typeof m === "object" &&
-          (m.role === "user" || m.role === "assistant") &&
-          typeof m.content === "string",
-      )
+      .filter((m: unknown): m is ChatInputMessage => {
+        if (!m || typeof m !== "object") return false;
+        const candidate = m as { role?: unknown; content?: unknown };
+        return (
+          (candidate.role === "user" || candidate.role === "assistant") &&
+          typeof candidate.content === "string"
+        );
+      })
       .slice(-16);
 
     const income = normalizeNumberString(context.income, "0");
@@ -72,7 +80,8 @@ export async function POST(req: Request) {
     const systemPrompt = `Eres Nova, un asistente financiero inteligente y avanzado integrado en la app Control Total de Finanzas.
 Tu objetivo es ayudar al usuario a mejorar su economía, darle recomendaciones estratégicas, y responder preguntas sobre sus finanzas personales.
 Habla en un tono moderno, profesional pero muy empático. Si el usuario te saluda, devuélvele el saludo amistosamente.
-Da respuestas claras, estructuradas y usa emojis para hacer la lectura más dinámica.
+  Responde SIEMPRE en español (español neutro de LATAM), aunque el usuario escriba en otro idioma.
+  Da respuestas claras, estructuradas y usa emojis para hacer la lectura más dinámica.
 
 CONTEXTO FINANCIERO ACTUAL DEL USUARIO:
 - Ingreso Mensual: $${income}
@@ -108,7 +117,8 @@ Usa este contexto para dar consejos súper personalizados. Si te preguntan cómo
             messages: fullMessages,
             temperature: 0.7,
             max_tokens: 800,
-            timeout: 15000,
+          }, {
+            timeout: MODEL_TIMEOUT_MS,
           });
           if (response?.choices?.[0]?.message) {
             selectedModel = model;

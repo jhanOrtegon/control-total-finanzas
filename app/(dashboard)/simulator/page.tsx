@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { useBudget } from "@/hooks/use-budget";
-import { useDebts } from "@/hooks/use-debts";
+import { useFinance } from "@/providers/finance-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import {
@@ -20,12 +18,8 @@ import {
 } from "lucide-react";
 
 export default function SimulatorPage() {
-  const { user } = useAuth();
   const { theme } = useTheme();
-
-  // Load user data to pre-populate simulator variables
-  const { budget } = useBudget(user?.id);
-  const { debts } = useDebts(user?.id);
+  const { budget, debts } = useFinance();
 
   // Simulator state variables
   const [initialCapital, setInitialCapital] = useState<string>("1000000"); // 1M COP default

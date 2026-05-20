@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { useBudget } from "@/hooks/use-budget";
-import { useExpenses } from "@/hooks/use-expenses";
-import { useDebts } from "@/hooks/use-debts";
+import React, { useState, useMemo } from "react";
+import Link from "next/link";
+import { useFinance } from "@/providers/finance-provider";
+import { useFinancePeriod } from "@/providers/finance-period-provider";
+import { getRecurrentTemplates } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import { 
@@ -21,46 +21,27 @@ import {
 } from "lucide-react";
 
 export default function AdvisorPage() {
-  const { user } = useAuth();
   const { theme } = useTheme();
+  const { budget, expenses, debts, getMonthlySummary } = useFinance();
+  const { month, year, periodLabel, linkWithPeriod } = useFinancePeriod();
 
-  // Load user data
-  const { budget } = useBudget(user?.id);
-  const { expenses } = useExpenses(user?.id);
-  const { debts } = useDebts(user?.id);
-
-  // States
   const [selectedRule, setSelectedRule] = useState<"503020" | "7030" | "6040">("503020");
-  const [extraPaymentInput, setExtraPaymentInput] = useState<string>("200000"); // default extra abono COP
+  const [extraPaymentInput, setExtraPaymentInput] = useState<string>("200000");
 
-  // Data computations
-  const income = budget?.monthly_income || 0;
-  const savingsGoal = budget?.monthly_savings_goal || 0;
-  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-  const monthlyDebtMinimums = debts.reduce((acc, curr) => acc + curr.minimum_payment, 0);
-  const realAvailableCash = income - totalSpent - savingsGoal - monthlyDebtMinimums;
-  
-  // Recurrent templates amount
-  const recurrentTotal = expenses
-    .filter((e) => e.type === "recurrent")
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  const summary = useMemo(
+    () => getMonthlySummary(month, year),
+    [getMonthlySummary, month, year],
+  );
 
-  // Variable expenses in database (exclude abonos/debts and recurrent)
-  const recurrentTitles = expenses.filter(e => e.type === "recurrent").map(e => e.title.toLowerCase());
-  const variableSpent = expenses
-    .filter(
-      (e) =>
-        e.type === "one-time" &&
-        !e.title.toLowerCase().startsWith("abono a deuda:") &&
-        !recurrentTitles.includes(e.title.toLowerCase())
-    )
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  const income = summary.totalIncome;
+  const savingsGoal = summary.savingsGoal;
+  const monthlyDebtMinimums = summary.monthlyDebtMinimums;
+  const realAvailableCash = summary.realAvailableCash;
 
-  // Fixed Costs (Needs) = Recurrent templates + Debt minimums
-  const actualNeeds = recurrentTotal + monthlyDebtMinimums;
-  // Wants (Deseos) = Variable actual spent
-  const actualWants = variableSpent;
-  // Savings (Ahorro/Inversion) = Savings goal
+  const recurrentTemplates = getRecurrentTemplates(expenses);
+  const recurrentTotal = recurrentTemplates.reduce((acc, curr) => acc + curr.amount, 0);
+  const actualNeeds = summary.recurrentCommitted + monthlyDebtMinimums;
+  const actualWants = summary.variableSpent;
   const actualSavings = savingsGoal;
 
   // Percentages relative to income
@@ -203,6 +184,13 @@ export default function AdvisorPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      <p className="text-xs font-bold text-slate-500">
+        Análisis del periodo: <span className="text-slate-800 dark:text-slate-200">{periodLabel}</span>
+        {" · "}
+        <Link href={linkWithPeriod("/reports")} className="text-indigo-600 hover:underline">
+          Ver informe completo
+        </Link>
+      </p>
       {/* Overview Badges */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className={`p-6 border rounded-3xl shadow-md ${

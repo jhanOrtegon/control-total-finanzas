@@ -18,6 +18,11 @@ import {
   LogOut,
   Calendar,
   TrendingUp,
+  History,
+  LineChart,
+  Wallet,
+  Bell,
+  FileBarChart,
 } from "lucide-react";
 
 export function Sidebar() {
@@ -60,6 +65,31 @@ export function Sidebar() {
       icon: TrendingUp,
     },
     {
+      href: "/alerts",
+      label: "Alertas y Vencimientos",
+      icon: Bell,
+    },
+    {
+      href: "/history",
+      label: "Historial / Trazabilidad",
+      icon: History,
+    },
+    {
+      href: "/trends",
+      label: "Evolución y Cierre",
+      icon: LineChart,
+    },
+    {
+      href: "/reports",
+      label: "Informes Detallados",
+      icon: FileBarChart,
+    },
+    {
+      href: "/budgets",
+      label: "Sobres por Categoría",
+      icon: Wallet,
+    },
+    {
       href: "/settings",
       label: "Ajustes Generales",
       icon: Settings,
@@ -68,7 +98,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`backdrop-blur-md border-r flex flex-col justify-between transition-all duration-300 sticky top-0 h-screen z-25 shrink-0 ${
+      className={`backdrop-blur-md border-r flex flex-col transition-all duration-300 sticky top-0 h-screen z-25 shrink-0 overflow-hidden ${
         isExpanded ? "w-64" : "w-20"
       } ${
         theme === "dark"
@@ -76,28 +106,30 @@ export function Sidebar() {
           : "bg-white border-slate-200 shadow-sm text-slate-900"
       }`}
     >
-      <div>
-        {/* Sidebar Header */}
-        <div className={`p-5 flex items-center justify-between border-b ${
+      {/* Sidebar Header */}
+      <div
+        className={`p-5 flex items-center justify-between border-b shrink-0 ${
           theme === "dark" ? "border-slate-950/60" : "border-slate-100"
-        }`}>
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="p-2 rounded-xl bg-slate-500/5 border border-slate-500/10 text-slate-500 shrink-0">
-              <Sparkles className="w-5 h-5 animate-pulse" />
-            </div>
-            {isExpanded && (
-              <div className="transition-opacity duration-300">
-                <h2 className="text-sm font-bold tracking-tight">
-                  Libertad <span className="text-indigo-600 dark:text-indigo-400">Financiera</span>
-                </h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Plan Anti-Deuda</p>
-              </div>
-            )}
+        }`}
+      >
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="p-2 rounded-xl bg-slate-500/5 border border-slate-500/10 text-slate-500 shrink-0">
+            <Sparkles className="w-5 h-5 animate-pulse" />
           </div>
+          {isExpanded && (
+            <div className="transition-opacity duration-300">
+              <h2 className="text-sm font-bold tracking-tight">
+                Libertad <span className="text-indigo-600 dark:text-indigo-400">Financiera</span>
+              </h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Plan Anti-Deuda</p>
+            </div>
+          )}
         </div>
+      </div>
 
-        {/* Navigation links */}
-        <nav className="p-4 space-y-2.5">
+      {/* Navigation links (scrollable) */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <nav className="space-y-2.5 pr-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -105,7 +137,9 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition ${
+                className={`w-full flex items-center rounded-xl text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60 ${
+                  isExpanded ? "gap-3.5 px-4 py-3 justify-start" : "justify-center p-3"
+                } ${
                   isActive
                     ? theme === "dark"
                       ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 shadow-sm ring-1 ring-indigo-400/20"
@@ -115,6 +149,7 @@ export function Sidebar() {
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
                 aria-current={isActive ? "page" : undefined}
+                title={!isExpanded ? item.label : undefined}
               >
                 <Icon className="w-5 h-5 shrink-0" />
                 {isExpanded && <span className="truncate">{item.label}</span>}
@@ -124,10 +159,12 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* Sidebar Footer */}
-      <div className={`p-4 border-t space-y-3 ${
-        theme === "dark" ? "border-slate-950/60" : "border-slate-100"
-      }`}>
+      {/* Sidebar Footer (fixed at bottom) */}
+      <div
+        className={`p-4 border-t space-y-3 shrink-0 ${
+          theme === "dark" ? "border-slate-950/60" : "border-slate-100"
+        }`}
+      >
         {/* Light/Dark mode switcher */}
         <button
           onClick={toggleTheme}
@@ -166,9 +203,11 @@ export function Sidebar() {
           </div>
           {isExpanded && (
             <div className="overflow-hidden truncate flex-1 pr-2">
-              <span className={`block text-[11px] font-bold truncate ${
-                theme === "dark" ? "text-white" : "text-slate-900"
-              }`}>
+              <span
+                className={`block text-[11px] font-bold truncate ${
+                  theme === "dark" ? "text-white" : "text-slate-900"
+                }`}
+              >
                 {user?.email}
               </span>
               <span className="block text-[9px] text-slate-500 truncate">Sesión activa</span>

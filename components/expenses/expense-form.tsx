@@ -5,6 +5,7 @@ import { Expense } from "@/types";
 import { useTheme } from "@/providers/theme-provider";
 import { CATEGORIES_LIST, getCategoryEmoji } from "@/lib/constants";
 import { ChevronDown, Check, Plus, Save, Edit3 } from "lucide-react";
+import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 
 interface ExpenseFormProps {
   editingExpense: Expense | null;
@@ -220,6 +221,13 @@ export function ExpenseForm({
             </div>
           )}
         </div>
+
+        {category !== "Ingresos" && (
+          <CategoryBudgetHint
+            category={category}
+            amount={parseFloat(amount) || 0}
+          />
+        )}
 
         <div className={`rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
           theme === "dark"

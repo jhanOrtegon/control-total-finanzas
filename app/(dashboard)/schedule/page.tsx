@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { useExpenses } from "@/hooks/use-expenses";
-import { useDebts } from "@/hooks/use-debts";
-import { useBudget } from "@/hooks/use-budget";
+import { useFinance } from "@/providers/finance-provider";
+import { isDateInMonth } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
 import { PlanModal } from "@/components/schedule/plan-modal";
+import { MonthCloseWizard } from "@/components/month-close/month-close-wizard";
 import { Pagination } from "@/components/shared/pagination";
 import {
   Calendar,
@@ -84,15 +83,9 @@ function percentToHeightClass(percent: number) {
 }
 
 export default function SchedulePage() {
-  const { user } = useAuth();
   const { theme } = useTheme();
-
-  // Load hooks
-  const { expenses, addExpense, deleteExpense, updateExpense } = useExpenses(
-    user?.id,
-  );
-  const { debts, recordDebtPayment } = useDebts(user?.id);
-  const { budget } = useBudget(user?.id);
+  const { expenses, addExpense, deleteExpense, updateExpense, debts, recordDebtPayment, budget } =
+    useFinance();
 
   // States
   const [selectedYear, setSelectedYear] = useState<number>(
@@ -108,24 +101,6 @@ export default function SchedulePage() {
   const [scheduleTab, setScheduleTab] = useState<"pending" | "paid">("pending");
 
   const OBLIGATIONS_PER_PAGE = 6;
-
-  // Helper to parse dates and check month & year
-  const isDateInMonth = (
-    dateStr: string | null,
-    targetMonth: number,
-    targetYear: number,
-  ) => {
-    if (!dateStr) return false;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [year, month] = dateStr.split("-").map(Number);
-      return year === targetYear && month === targetMonth;
-    }
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return false;
-    return (
-      date.getMonth() + 1 === targetMonth && date.getFullYear() === targetYear
-    );
-  };
 
   // Compile monthly statistics
   const getMonthlyStats = (monthNum: number) => {
@@ -953,6 +928,8 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
+
+      <MonthCloseWizard month={selectedMonth} year={selectedYear} />
     </div>
   );
 }

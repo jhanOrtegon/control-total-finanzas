@@ -5,6 +5,7 @@ import { insforge } from "@/lib/insforge";
 import { Expense } from "@/types";
 import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
+import { formatCurrency } from "@/lib/utils";
 
 export function useExpenses(userId: string | undefined) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -68,7 +69,7 @@ export function useExpenses(userId: string | undefined) {
             amount: Number(data.amount),
           };
           setExpenses((prev) => [added, ...prev]);
-          toast.success("Gasto registrado correctamente");
+          toast.success(`✅ ${added.title}`, { description: `${formatCurrency(added.amount)} · ${added.category}` });
           return added;
         }
         return null;
@@ -107,7 +108,7 @@ export function useExpenses(userId: string | undefined) {
             amount: Number(data.amount),
           };
           setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)));
-          toast.success("Gasto actualizado correctamente");
+          toast.success(`✏️ Actualizado: ${updated.title}`, { description: `${formatCurrency(updated.amount)} · ${updated.category}` });
           return updated;
         }
         return null;
@@ -130,7 +131,7 @@ export function useExpenses(userId: string | undefined) {
         if (error) throw error;
 
         setExpenses((prev) => prev.filter((e) => e.id !== id));
-        toast.success("Gasto eliminado correctamente");
+        toast.success("🗑️ Gasto eliminado");
         return true;
       } catch (err: any) {
         console.error("Error deleting expense:", err);
@@ -149,6 +150,21 @@ export function useExpenses(userId: string | undefined) {
     fetchExpenses();
   }, [fetchExpenses]);
 
+  const applyRealtimeExpense = useCallback(
+    (op: "INSERT" | "UPDATE" | "DELETE", data: Expense) => {
+      setExpenses((prev) => {
+        if (op === "DELETE") return prev.filter((e) => e.id !== data.id);
+        const mapped: Expense = { ...data, amount: Number(data.amount) };
+        if (op === "INSERT") {
+          if (prev.some((e) => e.id === data.id)) return prev;
+          return [mapped, ...prev];
+        }
+        return prev.map((e) => (e.id === data.id ? mapped : e));
+      });
+    },
+    [],
+  );
+
   return {
     expenses,
     loading,
@@ -157,5 +173,6 @@ export function useExpenses(userId: string | undefined) {
     deleteExpense,
     toggleExpenseStatus,
     refetchExpenses: fetchExpenses,
+    applyRealtimeExpense,
   };
 }

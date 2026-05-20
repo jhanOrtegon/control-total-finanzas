@@ -5,6 +5,7 @@ import { insforge } from "@/lib/insforge";
 import { UserBudget } from "@/types";
 import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
+import { formatCurrency } from "@/lib/utils";
 
 export function useBudget(userId: string | undefined) {
   const [budget, setBudget] = useState<UserBudget | null>(null);
@@ -90,7 +91,7 @@ export function useBudget(userId: string | undefined) {
             monthly_budget: Number(data.monthly_budget),
             monthly_savings_goal: Number(data.monthly_savings_goal || 0),
           });
-          toast.success("¡Presupuesto actualizado correctamente!");
+          toast.success("⚙️ Configuración guardada", { description: `Ingreso: ${formatCurrency(income)} · Presupuesto: ${formatCurrency(monthlyBudget)}` });
           return true;
         }
         return false;
@@ -106,10 +107,21 @@ export function useBudget(userId: string | undefined) {
     fetchBudget();
   }, [fetchBudget]);
 
+  const applyRealtimeBudget = useCallback((data: UserBudget) => {
+    setBudget({
+      id: data.id,
+      user_id: data.user_id,
+      monthly_income: Number(data.monthly_income),
+      monthly_budget: Number(data.monthly_budget),
+      monthly_savings_goal: Number(data.monthly_savings_goal || 0),
+    });
+  }, []);
+
   return {
     budget,
     loading,
     updateBudget,
     refetchBudget: fetchBudget,
+    applyRealtimeBudget,
   };
 }

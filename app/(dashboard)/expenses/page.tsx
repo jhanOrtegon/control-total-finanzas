@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { useExpenses } from "@/hooks/use-expenses";
+import { useFinance } from "@/providers/finance-provider";
 import { ExpenseCard } from "@/components/expenses/expense-card";
 import { ExpenseForm } from "@/components/expenses/expense-form";
 import { ExpenseDetailDialog } from "@/components/expenses/expense-detail-dialog";
@@ -12,17 +11,12 @@ import { Expense } from "@/types";
 import { CATEGORIES_LIST, getCategoryColor, getCategoryEmoji } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2 } from "lucide-react";
+import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 
 const ITEMS_PER_PAGE = 6;
 
 export default function ExpensesPage() {
-  const { user } = useAuth();
-  const {
-    expenses,
-    addExpense,
-    updateExpense,
-    deleteExpense,
-  } = useExpenses(user?.id);
+  const { expenses, addExpense, updateExpense, deleteExpense } = useFinance();
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
@@ -346,6 +340,12 @@ export default function ExpensesPage() {
                           {c.emoji} {c.name}
                         </button>
                       ))}
+                    </div>
+                    <div className="mt-2">
+                      <CategoryBudgetHint
+                        category={txCategory}
+                        amount={parseFloat(txAmount) || 0}
+                      />
                     </div>
                   </div>
                 )}

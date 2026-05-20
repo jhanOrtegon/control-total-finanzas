@@ -1,14 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
-import { useAuth } from "@/providers/auth-provider";
-import { useBudget } from "@/hooks/use-budget";
-import { useExpenses } from "@/hooks/use-expenses";
-import { useDebts } from "@/hooks/use-debts";
+import { useFinance } from "@/providers/finance-provider";
+import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { HealthAdvisor } from "@/components/dashboard/health-advisor";
 import { ProgressTrackers } from "@/components/dashboard/progress-trackers";
+import { ImprovementTips } from "@/components/dashboard/improvement-tips";
+import { DueAlerts } from "@/components/dashboard/due-alerts";
+import { MonthComparisonCard } from "@/components/month-close/month-comparison-card";
+import { AlertCenter } from "@/components/alerts/alert-center";
+import { BudgetPaceCard } from "@/components/charts/budget-pace-card";
+import { EnvelopeSummary } from "@/components/budgets/envelope-summary";
+import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
+import { ModuleHubLinks } from "@/components/shared/module-hub-links";
 import { formatCurrency } from "@/lib/utils";
 import {
   DollarSign,
@@ -17,103 +23,188 @@ import {
   CheckCircle,
   AlertTriangle,
   ArrowUpRight,
+  FileBarChart,
+  Calendar,
 } from "lucide-react";
 
 export default function OverviewPage() {
-  const { user } = useAuth();
+  const { month, year, isCurrentMonth, linkWithPeriod } = useFinancePeriod();
+  const { budget, getMonthlySummary } = useFinance();
 
-  // Custom hooks
-  const { budget } = useBudget(user?.id);
-  const { expenses } = useExpenses(user?.id);
-  const { debts } = useDebts(user?.id);
+  const summary = useMemo(
+    () => getMonthlySummary(month, year),
+    [getMonthlySummary, month, year],
+  );
 
-  // Financial computations
-  const totalSpent = expenses.reduce((acc, curr) => acc + curr.amount, 0);
-  const totalOutstandingDebt = debts.reduce((acc, curr) => acc + curr.remaining_amount, 0);
-  const totalInitialDebt = debts.reduce((acc, curr) => acc + curr.total_amount, 0);
-  const monthlyDebtMinimums = debts.reduce((acc, curr) => acc + curr.minimum_payment, 0);
+  const {
+    totalIncome,
+    monthSpent,
+    savingsGoal,
+    monthlyDebtMinimums,
+    totalOutstandingDebt,
+    totalInitialDebt,
+    totalPaidOffDebt,
+    realAvailableCash,
+    pendingObligationsCount,
+    extraIncome,
+  } = summary;
 
-  const income = budget?.monthly_income || 0;
-  const savingsGoal = budget?.monthly_savings_goal || 0;
   const budgetLimit = budget?.monthly_budget || 0;
-
-  const realAvailableCash = income - totalSpent - savingsGoal - monthlyDebtMinimums;
-  const totalPaidOffDebt = totalInitialDebt - totalOutstandingDebt;
+  const budgetUsedPct =
+    budgetLimit > 0 ? (monthSpent / budgetLimit) * 100 : 0;
 
   return (
     <div className="space-y-8">
-      {/* Metrics Row */}
+      {!isCurrentMonth && (
+        <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+          Periodo histórico — cambia el mes desde el encabezado.
+        </p>
+      )}
+
+      <PoolBalanceBanner dismissible />
+
+      <DueAlerts />
+
+      <MonthComparisonCard month={month} year={year} />
+
+      {/* Métricas del mes */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Income Stat */}
         <StatCard
-          title="Ingresos Netos al Mes"
-          value={formatCurrency(income)}
+          title="Ingresos del Mes"
+          value={formatCurrency(totalIncome)}
           icon={<DollarSign className="w-4 h-4 text-emerald-500" />}
           footer={
             <span className="flex items-center gap-1">
               <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Tu sueldo o ingresos fijos del mes</span>
+              <span>
+                Base {formatCurrency(summary.baseIncome)}
+                {extraIncome > 0
+                  ? ` + ${formatCurrency(extraIncome)} extra`
+                  : ""}
+              </span>
             </span>
           }
         />
 
-        {/* Total Remaining Debt */}
+        <StatCard
+          title="Gastado en el Mes"
+          value={formatCurrency(monthSpent)}
+          icon={<TrendingDown className="w-4 h-4 text-amber-500" />}
+          footer={
+            <span
+              className={
+                budgetUsedPct > 100
+                  ? "text-rose-500 font-bold"
+                  : "text-slate-500"
+              }
+            >
+              {budgetLimit > 0
+                ? `${budgetUsedPct.toFixed(0)}% del presupuesto (${formatCurrency(budgetLimit)})`
+                : "Sin tope de presupuesto configurado"}
+            </span>
+          }
+        />
+
         <StatCard
           title="Deuda Total Restante"
           value={formatCurrency(totalOutstandingDebt)}
           icon={<TrendingDown className="w-4 h-4 text-rose-500" />}
-          variant="default"
-          footer={
-            <span className="flex items-center gap-1 text-rose-500 animate-pulse">
-              <span>Capital total que debes amortizar</span>
-            </span>
-          }
+          footer={<span>Capital pendiente de amortizar (global)</span>}
         />
 
-        {/* Monthly Debt obligations */}
         <StatCard
-          title="Cuota de Deudas/Mes"
+          title="Cuota Mínima Deudas/Mes"
           value={formatCurrency(monthlyDebtMinimums)}
           icon={<Coins className="w-4 h-4 text-amber-500" />}
-          footer={<span>Compromiso mínimo mensual de deudas</span>}
+          footer={<span>Compromiso mínimo mensual de deudas activas</span>}
         />
+      </section>
 
-        {/* Real Cash flow available */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
         <StatCard
-          title="Dinero Disponible Real"
+          title="Disponible Real (Mes)"
           value={formatCurrency(realAvailableCash)}
           variant={realAvailableCash >= 0 ? "success" : "danger"}
-          icon={realAvailableCash >= 0 ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <AlertTriangle className="w-4 h-4 text-rose-500" />}
+          icon={
+            realAvailableCash >= 0 ? (
+              <CheckCircle className="w-4 h-4 text-emerald-500" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+            )
+          }
           footer={
             realAvailableCash >= 0 ? (
               <span className="text-slate-500 font-semibold leading-relaxed">
-                Caja positiva tras pagar gastos, deudas y reservar ahorro.
+                Tras gastos del mes y reservar meta de ahorro (
+                {formatCurrency(savingsGoal)}).
               </span>
             ) : (
               <span className="text-rose-500 font-bold leading-relaxed">
-                ¡Alerta! Estás gastando dinero que no tienes. Detén gastos.
+                Déficit de {formatCurrency(Math.abs(realAvailableCash))} este
+                mes. Revisa gastos o ingresos extra.
+              </span>
+            )
+          }
+        />
+
+        <StatCard
+          title="Obligaciones Pendientes"
+          value={String(pendingObligationsCount)}
+          icon={<Calendar className="w-4 h-4 text-indigo-500" />}
+          footer={
+            pendingObligationsCount > 0 ? (
+              <Link
+                href="/schedule"
+                className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+              >
+                Ver en cronograma →
+              </Link>
+            ) : (
+              <span className="text-emerald-500 font-bold">
+                Mes al día en obligaciones
               </span>
             )
           }
         />
       </section>
 
-      {/* Progress metrics */}
       <ProgressTrackers
-        monthlyIncome={income}
+        monthlyIncome={summary.baseIncome}
         monthlyDebtMinimums={monthlyDebtMinimums}
         totalOutstandingDebt={totalOutstandingDebt}
         totalInitialDebt={totalInitialDebt}
       />
 
-      {/* Grid for advisor and summary */}
+      <ImprovementTips summary={summary} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AlertCenter month={month} year={year} compact />
+        <BudgetPaceCard month={month} year={year} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <EnvelopeSummary month={month} year={year} compact />
+        <Link
+          href={linkWithPeriod("/reports")}
+          className="border rounded-3xl p-6 flex flex-col justify-center gap-2 bg-indigo-600/10 border-indigo-500/30 hover:border-indigo-500/60 transition"
+        >
+          <FileBarChart className="w-8 h-8 text-indigo-500" />
+          <span className="text-sm font-black">Informe detallado del mes</span>
+          <span className="text-[10px] text-slate-500 font-semibold">
+            Exportar CSV, imprimir y ver análisis completo →
+          </span>
+        </Link>
+      </div>
+
+      <ModuleHubLinks />
+
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2">
           <HealthAdvisor
-            monthlyIncome={income}
+            monthlyIncome={totalIncome}
             monthlyBudget={budgetLimit}
             monthlySavingsGoal={savingsGoal}
-            totalSpent={totalSpent}
+            totalSpent={monthSpent}
             realAvailableCash={realAvailableCash}
           />
         </div>
@@ -124,16 +215,30 @@ export default function OverviewPage() {
           <div className="space-y-4">
             <div className="flex justify-between text-xs font-semibold text-slate-500">
               <span>Deuda Pagada:</span>
-              <span className="text-emerald-500 font-bold">{formatCurrency(totalPaidOffDebt)}</span>
+              <span className="text-emerald-500 font-bold">
+                {formatCurrency(totalPaidOffDebt)}
+              </span>
             </div>
             <div className="flex justify-between text-xs font-semibold text-slate-500">
               <span>Deuda Pendiente:</span>
-              <span className="text-rose-500 font-bold">{formatCurrency(totalOutstandingDebt)}</span>
+              <span className="text-rose-500 font-bold">
+                {formatCurrency(totalOutstandingDebt)}
+              </span>
             </div>
             <div className="flex justify-between text-xs font-semibold text-slate-500 border-t pt-3 border-slate-200 dark:border-slate-800/80">
               <span>Deuda Inicial Total:</span>
-              <span className="font-black">{formatCurrency(totalInitialDebt)}</span>
+              <span className="font-black">
+                {formatCurrency(totalInitialDebt)}
+              </span>
             </div>
+            {summary.debtPaymentsInMonth > 0 && (
+              <div className="flex justify-between text-xs font-semibold text-slate-500">
+                <span>Abonos este mes:</span>
+                <span className="text-indigo-500 font-bold">
+                  {formatCurrency(summary.debtPaymentsInMonth)}
+                </span>
+              </div>
+            )}
           </div>
 
           <Link

@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { useDebts } from "@/hooks/use-debts";
-import { useExpenses } from "@/hooks/use-expenses";
+import { useFinance } from "@/providers/finance-provider";
 import { DebtCard } from "@/components/debts/debt-card";
 import { DebtForm } from "@/components/debts/debt-form";
 import { PaymentDialog } from "@/components/debts/payment-dialog";
@@ -16,18 +14,8 @@ import { ShieldAlert } from "lucide-react";
 const ITEMS_PER_PAGE = 5;
 
 export default function DebtsPage() {
-  const { user } = useAuth();
-  const { refetchExpenses } = useExpenses(user?.id);
-
-  const {
-    debts,
-    addDebt,
-    updateDebt,
-    deleteDebt,
-    recordDebtPayment,
-  } = useDebts(user?.id, () => {
-    refetchExpenses();
-  });
+  const { debts, addDebt, updateDebt, deleteDebt, recordDebtPayment } =
+    useFinance();
 
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [payingDebtId, setPayingDebtId] = useState<string | null>(null);

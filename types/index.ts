@@ -31,3 +31,55 @@ export interface Debt {
   start_month: string | null;
   created_at: string;
 }
+
+export interface DebtPayment {
+  id: string;
+  user_id: string;
+  debt_id: string;
+  amount: number;
+  balance_after: number;
+  expense_id: string | null;
+  paid_at: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface MonthlySnapshot {
+  id: string;
+  user_id: string;
+  year: number;
+  month: number;
+  total_income: number;
+  total_spent: number;
+  savings_goal: number;
+  total_outstanding_debt: number;
+  real_available_cash: number;
+  dti_ratio: number;
+  notes: string | null;
+  closed_at: string;
+  created_at: string;
+}
+
+export interface CategoryBudget {
+  id: string;
+  user_id: string;
+  category: string;
+  monthly_limit: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FinancialEventType = "expense" | "income" | "debt_payment";
+
+export interface FinancialEvent {
+  id: string;
+  type: FinancialEventType;
+  date: string;
+  title: string;
+  amount: number;
+  category?: string;
+  debtId?: string;
+  debtTitle?: string;
+  balanceAfter?: number;
+  status?: string;
+}

@@ -3,6 +3,9 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/providers/theme-provider";
+import { SyncStatus } from "@/components/layout/sync-status";
+import { AlertBadge } from "@/components/layout/alert-badge";
+import { PeriodSelector } from "@/components/shared/period-selector";
 
 export function Header() {
   const pathname = usePathname();
@@ -45,6 +48,34 @@ export function Header() {
           title: "Proyección y Planificación Patrimonial",
           subtitle: "Calculadora de interés compuesto y liquidación progresiva de deudas",
         };
+      case "/alerts":
+        return {
+          title: "Alertas y Vencimientos",
+          subtitle:
+            "Vencidos, próximos pagos, presupuesto, DTI y ritmo de gasto",
+        };
+      case "/history":
+        return {
+          title: "Libro de Movimientos",
+          subtitle: "Trazabilidad de gastos, ingresos y abonos a deuda",
+        };
+      case "/trends":
+        return {
+          title: "Evolución y Cierre de Mes",
+          subtitle:
+            "Cierre guiado, comparación mes a mes e historial de snapshots",
+        };
+      case "/budgets":
+        return {
+          title: "Presupuesto por Categoría",
+          subtitle: "Sobres mensuales y control por tipo de gasto",
+        };
+      case "/reports":
+        return {
+          title: "Informes y Reportes",
+          subtitle:
+            "Vista integrada del mes: flujo, categorías, deudas y recomendaciones",
+        };
       default:
         return {
           title: "Libertad Financiera",
@@ -71,13 +102,10 @@ export function Header() {
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className={`text-xs border px-3.5 py-1.5 rounded-full font-bold flex items-center gap-2 ${
-            theme === "dark" ? "text-slate-400 bg-slate-900 border-slate-800" : "text-slate-700 bg-slate-100 border-slate-200"
-          }`}>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Servidor de Finanzas: Activo
-          </span>
+        <div className="flex items-center gap-3">
+          <PeriodSelector compact />
+          <AlertBadge />
+          <SyncStatus />
         </div>
       </div>
     </header>

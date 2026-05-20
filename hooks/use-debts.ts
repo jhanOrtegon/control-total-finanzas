@@ -5,6 +5,8 @@ import { insforge } from "@/lib/insforge";
 import { Debt } from "@/types";
 import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
+import { insertDebtPaymentRecord } from "@/hooks/use-debt-payments";
+import { formatCurrency } from "@/lib/utils";
 
 const OPTIONAL_DEBT_COLUMNS = ["installments", "start_month"] as const;
 
@@ -106,7 +108,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
             start_month: finalData.start_month || null,
           };
           setDebts((prev) => [added, ...prev]);
-          toast.success("Deuda registrada correctamente");
+          toast.success(`💳 ${added.title}`, { description: `Total: ${formatCurrency(added.total_amount)}` });
           return added;
         }
         return null;
@@ -158,7 +160,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
             start_month: finalData.start_month || null,
           };
           setDebts((prev) => prev.map((d) => (d.id === id ? updated : d)));
-          toast.success("Deuda actualizada correctamente");
+          toast.success(`✏️ Deuda actualizada: ${updated.title}`, { description: `Restante: ${formatCurrency(updated.remaining_amount)}` });
           return updated;
         }
         return null;
@@ -181,7 +183,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
         if (error) throw error;
 
         setDebts((prev) => prev.filter((d) => d.id !== id));
-        toast.success("Registro de deuda eliminado");
+        toast.success("🗑️ Deuda eliminada");
         return true;
       } catch (err: any) {
         console.error("Error deleting debt:", err);
@@ -210,8 +212,10 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
         if (error) throw error;
 
         if (data) {
-          // Create matching expense
-          const { error: expError } = await insforge.database
+          const paidAt = new Date().toISOString();
+          let expenseId: string | null = null;
+
+          const { data: expData, error: expError } = await insforge.database
             .from("expenses")
             .insert([
               {
@@ -221,11 +225,27 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
                 category: "Otros",
                 type: "one-time",
                 status: "paid",
-                paid_date: new Date().toISOString(),
+                paid_date: paidAt,
+                due_date: paidAt.slice(0, 10),
               },
-            ]);
+            ])
+            .select()
+            .single();
 
-          if (expError) console.error("Error inserting auto expense:", expError);
+          if (expError) {
+            console.error("Error inserting auto expense:", expError);
+          } else if (expData?.id) {
+            expenseId = String(expData.id);
+          }
+
+          await insertDebtPaymentRecord({
+            user_id: userId,
+            debt_id: debtId,
+            amount,
+            balance_after: Number(data.remaining_amount),
+            expense_id: expenseId,
+            paid_at: paidAt,
+          });
 
           setDebts((prev) =>
             prev.map((d) =>
@@ -235,7 +255,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
             )
           );
 
-          toast.success("Abono registrado correctamente");
+          toast.success(`💰 Abono registrado: ${formatCurrency(amount)}`, { description: `Restante: ${formatCurrency(newRemaining)}` });
 
           if (onPaymentSuccess) {
             onPaymentSuccess();
@@ -255,6 +275,28 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     fetchDebts();
   }, [fetchDebts]);
 
+  const applyRealtimeDebt = useCallback(
+    (op: "INSERT" | "UPDATE" | "DELETE", data: Debt) => {
+      setDebts((prev) => {
+        if (op === "DELETE") return prev.filter((d) => d.id !== data.id);
+        const mapped: Debt = {
+          ...data,
+          total_amount: Number(data.total_amount),
+          remaining_amount: Number(data.remaining_amount),
+          minimum_payment: Number(data.minimum_payment || 0),
+          installments: data.installments ? Number(data.installments) : null,
+          start_month: data.start_month || null,
+        };
+        if (op === "INSERT") {
+          if (prev.some((d) => d.id === data.id)) return prev;
+          return [mapped, ...prev];
+        }
+        return prev.map((d) => (d.id === data.id ? mapped : d));
+      });
+    },
+    [],
+  );
+
   return {
     debts,
     loading,
@@ -263,5 +305,6 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     deleteDebt,
     recordDebtPayment,
     refetchDebts: fetchDebts,
+    applyRealtimeDebt,
   };
 }

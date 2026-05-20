@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAuth } from "@/providers/auth-provider";
-import { useBudget } from "@/hooks/use-budget";
+import { useFinance } from "@/providers/finance-provider";
 import { Settings, Save } from "lucide-react";
 import { toast } from "sonner";
+import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
 
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const { budget, updateBudget, loading } = useBudget(user?.id);
+  const { budget, updateBudget, budgetLoading: loading } = useFinance();
 
   const [income, setIncome] = useState<string>("");
   const [savingsGoal, setSavingsGoal] = useState<string>("");
@@ -41,7 +40,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <section className="border rounded-3xl p-8 max-w-2xl mx-auto shadow-xl space-y-6 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
+    <div className="max-w-2xl mx-auto space-y-6">
+    <PoolBalanceBanner />
+    <section className="border rounded-3xl p-8 shadow-xl space-y-6 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
       <h2 className="text-lg font-black flex items-center gap-2">
         <Settings className="w-6 h-6 text-indigo-500" />
         <span>Configuración de Parámetros de Libertad Financiera</span>
@@ -105,5 +106,6 @@ export default function SettingsPage() {
         </div>
       </form>
     </section>
+    </div>
   );
 }

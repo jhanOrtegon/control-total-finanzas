@@ -4,7 +4,7 @@ import React from "react";
 import { Debt } from "@/types";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
-import { Coins, Edit3, Trash2, Eye } from "lucide-react";
+import { Coins, Edit3, Trash2, Eye, CalendarDays } from "lucide-react";
 
 interface DebtCardProps {
   debt: Debt;
@@ -26,6 +26,27 @@ export function DebtCard({
   const { theme } = useTheme();
   const isFullyPaid = debt.remaining_amount <= 0;
 
+  const MONTHS = [
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
+  ];
+  const effectiveStartMonth = (() => {
+    const raw = debt.start_month || debt.created_at.slice(0, 7);
+    const [year, month] = raw.split("-");
+    return `${MONTHS[parseInt(month) - 1]} ${year}`;
+  })();
+  const isCustomStart = !!debt.start_month;
+
   const paidPercentage = debt.total_amount > 0
     ? ((debt.total_amount - debt.remaining_amount) / debt.total_amount) * 100
     : 0;
@@ -38,19 +59,21 @@ export function DebtCard({
             ? "bg-emerald-950/20 border-emerald-500/50"
             : "bg-emerald-50 border-emerald-300"
           : isEditing
-          ? theme === "dark"
-            ? "bg-indigo-950/20 border-indigo-500/70"
-            : "bg-indigo-50 border-indigo-500/60"
-          : theme === "dark"
-          ? "bg-slate-900/55 border-slate-800/80 hover:border-slate-700/80"
-          : "bg-white border-slate-200 hover:border-indigo-200/80 hover:shadow-lg hover:shadow-indigo-500/5"
+            ? theme === "dark"
+              ? "bg-indigo-950/20 border-indigo-500/70"
+              : "bg-indigo-50 border-indigo-500/60"
+            : theme === "dark"
+              ? "bg-slate-900/55 border-slate-800/80 hover:border-slate-700/80"
+              : "bg-white border-slate-200 hover:border-indigo-200/80 hover:shadow-lg hover:shadow-indigo-500/5"
       }`}
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         {/* Left Info */}
         <div>
           <div className="flex items-center gap-2">
-            <h4 className={`text-base font-bold ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
+            <h4
+              className={`text-base font-bold ${theme === "dark" ? "text-white" : "text-slate-900"}`}
+            >
               {debt.title}
             </h4>
             {isFullyPaid && (
@@ -60,21 +83,41 @@ export function DebtCard({
             )}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-slate-500 font-semibold">
-            <span>Deuda Total: <strong>{formatCurrency(debt.total_amount)}</strong></span>
-            {debt.due_date && <span>Límite de pago: <strong>{debt.due_date}</strong></span>}
+            <span>
+              Deuda Total: <strong>{formatCurrency(debt.total_amount)}</strong>
+            </span>
+            <span className="flex items-center gap-1">
+              <CalendarDays className="w-3 h-3" />
+              Inicio cuotas: <strong>{effectiveStartMonth}</strong>
+              {!isCustomStart && (
+                <span className="text-slate-400 font-normal">(creación)</span>
+              )}
+            </span>
+            {debt.due_date && (
+              <span>
+                Límite de pago: <strong>{debt.due_date}</strong>
+              </span>
+            )}
           </div>
         </div>
 
         {/* Right Info: Pay minimum & abonos */}
         <div className="flex sm:flex-col items-end gap-2 sm:gap-1.5 w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-800/60">
           <div className="text-right">
-            <span className="block text-[10px] text-slate-500 font-bold uppercase">Saldo Restante</span>
-            <span className={`text-lg font-black ${isFullyPaid ? "text-emerald-500" : "text-rose-500"}`}>
+            <span className="block text-[10px] text-slate-500 font-bold uppercase">
+              Saldo Restante
+            </span>
+            <span
+              className={`text-lg font-black ${isFullyPaid ? "text-emerald-500" : "text-rose-500"}`}
+            >
               {formatCurrency(debt.remaining_amount)}
             </span>
           </div>
           <div className="text-right">
-            <span className="block text-[9px] text-slate-500 font-bold">Cuota Mínima/Mes: <strong>{formatCurrency(debt.minimum_payment)}</strong></span>
+            <span className="block text-[9px] text-slate-500 font-bold">
+              Cuota Mínima/Mes:{" "}
+              <strong>{formatCurrency(debt.minimum_payment)}</strong>
+            </span>
           </div>
         </div>
       </div>
@@ -85,7 +128,9 @@ export function DebtCard({
           <span>Amortización: {paidPercentage.toFixed(0)}% pagado</span>
           <span>Resta: {formatCurrency(debt.remaining_amount)}</span>
         </div>
-        <div className={`w-full rounded-full h-2 overflow-hidden p-0.5 ${theme === "dark" ? "bg-slate-950 border border-slate-900" : "bg-slate-100 border border-slate-200"}`}>
+        <div
+          className={`w-full rounded-full h-2 overflow-hidden p-0.5 ${theme === "dark" ? "bg-slate-950 border border-slate-900" : "bg-slate-100 border border-slate-200"}`}
+        >
           <div
             className="h-full rounded-full bg-linear-to-r from-rose-500 to-emerald-500 transition-all duration-500"
             style={{ width: `${Math.min(paidPercentage, 100)}%` }}

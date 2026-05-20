@@ -16,7 +16,7 @@ export function buildFinancialEvents(
   );
 
   const fromExpenses: FinancialEvent[] = expenses
-    .filter((e) => !paymentExpenseIds.has(e.id))
+    .filter((e) => !paymentExpenseIds.has(e.id) && e.status === "paid")
     .map((e) => ({
       id: `exp-${e.id}`,
       type: e.category === "Ingresos" ? "income" : "expense",
@@ -121,7 +121,12 @@ export function spentByCategoryInMonth(
 ): Record<string, number> {
   const totals: Record<string, number> = {};
   for (const e of expenses) {
-    if (e.category === "Ingresos" || isDebtPaymentExpense(e)) continue;
+    if (
+      e.category === "Ingresos" ||
+      isDebtPaymentExpense(e) ||
+      e.status !== "paid"
+    )
+      continue;
     const dateStr = e.paid_date || e.due_date || e.created_at;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) continue;

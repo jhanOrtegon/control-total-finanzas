@@ -77,6 +77,7 @@ export function computeMonthlySummary(
     .filter(
       (e) =>
         e.category !== "Ingresos" &&
+        e.status === "paid" &&
         getExpenseDateInMonth(e, month, year),
     )
     .reduce((acc, e) => acc + e.amount, 0);
@@ -85,6 +86,7 @@ export function computeMonthlySummary(
     .filter(
       (e) =>
         e.type === "one-time" &&
+        e.status === "paid" &&
         e.category !== "Ingresos" &&
         getExpenseDateInMonth(e, month, year) &&
         !recurrentTitles.includes(e.title.toLowerCase()) &&
@@ -120,7 +122,12 @@ export function computeMonthlySummary(
 
   const baseIncome = budget?.monthly_income || 0;
   const savingsGoal = budget?.monthly_savings_goal || 0;
-  const totalIncome = baseIncome + extraIncome;
+  // Prima legal: se paga en junio y diciembre (Colombia, equivale a medio salario mensual)
+  let prima = 0;
+  if (month === 6 || month === 12) {
+    prima = baseIncome / 2;
+  }
+  const totalIncome = baseIncome + extraIncome + prima;
 
   const realAvailableCash = totalIncome - monthSpent - savingsGoal;
   const dtiRatio =

@@ -52,7 +52,7 @@ export function DebtForm({
   const [minimumPayment, setMinimumPayment] = useState<number | "">("");
   const [dueDate, setDueDate] = useState("");
   const [installments, setInstallments] = useState("1");
-  const [startMonth, setStartMonth] = useState(getCurrentMonthValue());
+  const [startMonth, setStartMonth] = useState("");
   const [autoCalculate, setAutoCalculate] = useState(false);
 
   const currentMonthValue = getCurrentMonthValue();
@@ -80,7 +80,7 @@ export function DebtForm({
       setMinimumPayment(editingDebt.minimum_payment);
       setDueDate(editingDebt.due_date || "");
       setInstallments(editingDebt.installments?.toString() || "1");
-      setStartMonth(editingDebt.start_month || currentMonthValue);
+      setStartMonth(editingDebt.start_month || "");
       setAutoCalculate(false);
     } else {
       resetForm();
@@ -111,7 +111,7 @@ export function DebtForm({
     setMinimumPayment("");
     setDueDate("");
     setInstallments("1");
-    setStartMonth(currentMonthValue);
+    setStartMonth("");
     setAutoCalculate(false);
   };
 
@@ -144,7 +144,7 @@ export function DebtForm({
       minimum_payment: minimum,
       due_date: dueDate || null,
       installments: normalizedInstallments,
-      start_month: startMonth || currentMonthValue,
+      start_month: startMonth || null,
     });
 
     if (!editingDebt) {
@@ -159,15 +159,25 @@ export function DebtForm({
   }`;
 
   return (
-    <div className={`border rounded-3xl p-6 shadow-xl space-y-6 ${
-      theme === "dark" ? "bg-slate-900/60 border-slate-800" : "bg-white border-slate-200"
-    }`}>
+    <div
+      className={`border rounded-3xl p-6 shadow-xl space-y-6 ${
+        theme === "dark"
+          ? "bg-slate-900/60 border-slate-800"
+          : "bg-white border-slate-200"
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="p-2 rounded-xl bg-slate-500/5 text-slate-500 border border-slate-500/10">
-            {editingDebt ? <Edit3 className="w-5 h-5 animate-pulse" /> : <Plus className="w-5 h-5" />}
+            {editingDebt ? (
+              <Edit3 className="w-5 h-5 animate-pulse" />
+            ) : (
+              <Plus className="w-5 h-5" />
+            )}
           </div>
-          <h3 className={`text-base font-bold ${theme === "dark" ? "text-white" : "text-slate-950"}`}>
+          <h3
+            className={`text-base font-bold ${theme === "dark" ? "text-white" : "text-slate-950"}`}
+          >
             {editingDebt ? "Modificar Deuda" : "Registrar Nueva Deuda"}
           </h3>
         </div>
@@ -185,7 +195,9 @@ export function DebtForm({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Debt Title */}
         <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Entidad o Nombre</label>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+            Entidad o Nombre
+          </label>
           <input
             type="text"
             placeholder="Ej. Tarjeta Visa, Crédito Hipotecario..."
@@ -197,7 +209,9 @@ export function DebtForm({
 
         {/* Total Amount */}
         <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Monto Inicial Prestado</label>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+            Monto Inicial Prestado
+          </label>
           <CurrencyInput
             value={totalAmount === "" ? undefined : totalAmount}
             onChange={(val) => setTotalAmount(val)}
@@ -208,7 +222,9 @@ export function DebtForm({
 
         {/* Remaining Amount */}
         <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Saldo Restante Actual</label>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+            Saldo Restante Actual
+          </label>
           <CurrencyInput
             value={remainingAmount === "" ? undefined : remainingAmount}
             onChange={(val) => setRemainingAmount(val)}
@@ -246,16 +262,27 @@ export function DebtForm({
               </div>
             )}
           </div>
-          {installments && typeof remainingAmount === 'number' && (
+          {installments && typeof remainingAmount === "number" && (
             <p className="text-[10px] text-slate-500 mt-1 font-medium">
-              Cuota calculada: {(remainingAmount / parseInt(installments || "1")).toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })}/mes
+              Cuota calculada:{" "}
+              {(remainingAmount / parseInt(installments || "1")).toLocaleString(
+                "es-CO",
+                {
+                  style: "currency",
+                  currency: "COP",
+                  maximumFractionDigits: 0,
+                },
+              )}
+              /mes
             </p>
           )}
         </div>
 
         {/* Minimum Payment */}
         <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Pago Mínimo Mensual</label>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+            Pago Mínimo Mensual
+          </label>
           <CurrencyInput
             value={minimumPayment === "" ? undefined : minimumPayment}
             onChange={(val) => {
@@ -270,17 +297,27 @@ export function DebtForm({
         {/* Start Month */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-            Mes de Inicio de Cuotas (Opcional)
+            Mes de Inicio de Cuotas
           </label>
-          <Select value={startMonth} onValueChange={(val) => setStartMonth(val ?? "")}>
-            <SelectTrigger className={`w-full h-10 rounded-xl ${
-              theme === "dark"
-                ? "bg-slate-950/80 border-slate-800 text-white"
-                : "bg-slate-50 border-slate-200 text-slate-900"
-            }`}>
-              <SelectValue placeholder="Selecciona un mes..." />
+          <Select
+            value={startMonth}
+            onValueChange={(val) =>
+              setStartMonth(val === "__default__" ? "" : val)
+            }
+          >
+            <SelectTrigger
+              className={`w-full h-10 rounded-xl ${
+                theme === "dark"
+                  ? "bg-slate-950/80 border-slate-800 text-white"
+                  : "bg-slate-50 border-slate-200 text-slate-900"
+              }`}
+            >
+              <SelectValue placeholder="Usar fecha de creación (por defecto)" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="__default__">
+                Usar fecha de creación (por defecto)
+              </SelectItem>
               {monthOptions.map((month) => (
                 <SelectItem key={month.value} value={month.value}>
                   {month.label} {month.year}
@@ -288,11 +325,18 @@ export function DebtForm({
               ))}
             </SelectContent>
           </Select>
+          {!startMonth && (
+            <p className="text-[10px] text-slate-500 mt-1 font-medium">
+              Si no se especifica, se usará la fecha de creación de la deuda.
+            </p>
+          )}
         </div>
 
         {/* Due Date */}
         <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Fecha de Vencimiento (Opcional)</label>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+            Fecha de Vencimiento (Opcional)
+          </label>
           <DatePicker
             value={dueDate || null}
             onChange={(value) => setDueDate(value || "")}
@@ -314,7 +358,11 @@ export function DebtForm({
               : "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10"
           }`}
         >
-          {editingDebt ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          {editingDebt ? (
+            <Save className="w-4 h-4" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
           <span>{editingDebt ? "Guardar Cambios" : "Agregar Deuda"}</span>
         </button>
       </form>

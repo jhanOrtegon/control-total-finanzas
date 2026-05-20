@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useFinance } from "@/providers/finance-provider";
 import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { useTheme } from "@/providers/theme-provider";
+import { useConfirm } from "@/providers/confirm-provider";
 import {
   buildFinancialEvents,
   filterEvents,
@@ -13,7 +14,8 @@ import {
 } from "@/lib/financial-events";
 import { formatCurrency } from "@/lib/utils";
 import { Pagination } from "@/components/shared/pagination";
-import { Download, History, Search } from "lucide-react";
+import { Download, History, Search, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -26,7 +28,9 @@ const TYPE_LABELS = {
 
 export default function HistoryPage() {
   const { theme } = useTheme();
-  const { expenses, debtPayments, debts } = useFinance();
+  const { expenses, debtPayments, debts, deleteExpense, undoDebtPayment } =
+    useFinance();
+  const confirm = useConfirm();
 
   const { month, year, setPeriod, periodLabel, linkWithPeriod } = useFinancePeriod();
   const [typeFilter, setTypeFilter] =
@@ -61,6 +65,38 @@ export default function HistoryPage() {
     downloadCsv(`historial-${year}-${String(month).padStart(2, "0")}.csv`, csv);
   };
 
+  const handleDeleteEvent = async (eventId: string) => {
+    if (eventId.startsWith("exp-")) {
+      const expenseId = eventId.replace("exp-", "");
+      const ok = await confirm({
+        title: "Eliminar movimiento",
+        description:
+          "Este gasto/ingreso se eliminará del historial y dejará de afectar los cálculos del periodo.",
+        confirmLabel: "Sí, eliminar",
+        variant: "danger",
+      });
+      if (!ok) return;
+      await deleteExpense(expenseId);
+      return;
+    }
+
+    if (eventId.startsWith("pay-")) {
+      const paymentId = eventId.replace("pay-", "");
+      const ok = await confirm({
+        title: "Anular abono de deuda",
+        description:
+          "Se revertirá este abono y se recalculará el saldo de la deuda. Esta acción eliminará su impacto en historial y métricas.",
+        confirmLabel: "Sí, anular abono",
+        variant: "danger",
+      });
+      if (!ok) return;
+      await undoDebtPayment(paymentId);
+      return;
+    }
+
+    toast.error("No se pudo identificar el movimiento a eliminar.");
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       <section
@@ -75,7 +111,8 @@ export default function HistoryPage() {
           Libro de movimientos
         </h2>
         <p className="text-xs text-slate-500 font-semibold mt-1">
-          Trazabilidad unificada: gastos, ingresos y abonos a deuda ({periodLabel}).
+          Trazabilidad unificada: gastos, ingresos y abonos a deuda (
+          {periodLabel}).
         </p>
         <Link
           href={linkWithPeriod("/reports")}
@@ -91,6 +128,7 @@ export default function HistoryPage() {
               setPeriod(Number(e.target.value), year);
               setPage(1);
             }}
+            title="Seleccionar mes"
             className={`border rounded-xl py-2 px-3 text-xs font-bold ${
               theme === "dark"
                 ? "bg-slate-950 border-slate-800"
@@ -110,6 +148,8 @@ export default function HistoryPage() {
               setPeriod(month, Number(e.target.value));
               setPage(1);
             }}
+            title="Seleccionar año"
+            placeholder="Año"
             className={`w-24 border rounded-xl py-2 px-3 text-xs font-bold ${
               theme === "dark"
                 ? "bg-slate-950 border-slate-800"
@@ -122,6 +162,7 @@ export default function HistoryPage() {
               setTypeFilter(e.target.value as keyof typeof TYPE_LABELS);
               setPage(1);
             }}
+            title="Filtrar por tipo de movimiento"
             className={`border rounded-xl py-2 px-3 text-xs font-bold ${
               theme === "dark"
                 ? "bg-slate-950 border-slate-800"
@@ -186,6 +227,7 @@ export default function HistoryPage() {
                 <th className="py-3 px-4">Descripción</th>
                 <th className="py-3 px-4 text-right">Monto</th>
                 <th className="py-3 px-4 text-right">Saldo deuda</th>
+                <th className="py-3 px-4 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="font-semibold">
@@ -233,6 +275,20 @@ export default function HistoryPage() {
                     {ev.balanceAfter != null
                       ? formatCurrency(ev.balanceAfter)
                       : "—"}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="p-2 rounded-lg text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
+                      title={
+                        ev.type === "debt_payment"
+                          ? "Anular abono"
+                          : "Eliminar movimiento"
+                      }
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))}

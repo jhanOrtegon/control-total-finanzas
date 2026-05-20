@@ -53,6 +53,7 @@ export default function SettingsPage() {
       </p>
 
       <form onSubmit={handleSave} className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
             Ingresos Mensuales Propios
@@ -62,6 +63,19 @@ export default function SettingsPage() {
             onChange={(val) => setIncome(val)}
             className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
           />
+        </div>
+
+        <div>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
+            Primas autocalculadas (Junio y Diciembre)
+          </label>
+          <CurrencyInput
+            value={income === "" ? undefined : income}
+            readOnly
+            disabled
+            className="w-full border rounded-xl py-3 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white opacity-80 cursor-not-allowed"
+          />
+          <p className="text-[11px] text-slate-500 mt-1">Se suma automáticamente a tus ingresos en junio y diciembre según la ley laboral colombiana.</p>
         </div>
 
         <div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useFinance } from "@/providers/finance-provider";
 import { isDateInMonth } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
@@ -283,6 +284,7 @@ export default function SchedulePage() {
       );
 
     const baseIncome = budget?.monthly_income || 0;
+    const primasIncome = (monthNum === 6 || monthNum === 12) ? baseIncome / 2 : 0;
     const extraIncome = incomeObligations.reduce((a, c) => a + c.amount, 0);
 
     return {
@@ -295,7 +297,8 @@ export default function SchedulePage() {
       totalDue,
       totalPaid,
       totalPending: Math.max(0, totalDue - totalPaid),
-      totalIncome: baseIncome + extraIncome,
+      totalIncome: baseIncome + extraIncome + primasIncome,
+      primasIncome,
     };
   };
 
@@ -312,8 +315,13 @@ export default function SchedulePage() {
 
   const maxYearlyDue = Math.max(...yearlyChartData.map((d) => d.totalDue), 100);
   const selectedStats = getMonthlyStats(selectedMonth);
-  const incomeMinusPending =
-    selectedStats.totalIncome - selectedStats.totalPending;
+  const projectedPaymentsFlow = selectedStats.totalDue;
+  const realPaymentsFlow = selectedStats.totalPaid;
+  const programmedSavings = budget?.monthly_savings_goal || 0;
+  const projectedAvailableAfterPayments =
+    selectedStats.totalIncome - projectedPaymentsFlow - programmedSavings;
+  const realAvailableAfterPayments =
+    selectedStats.totalIncome - realPaymentsFlow - programmedSavings;
   const filteredObligations = useMemo(
     () =>
       selectedStats.allObligations.filter((ob) =>
@@ -507,28 +515,28 @@ export default function SchedulePage() {
       </div>
 
       {/* Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
         {/* Progress Circle */}
         <div
-          className={`p-6 border rounded-3xl shadow-xl flex flex-col justify-between ${
+          className={`lg:col-span-3 p-7 lg:p-8 border rounded-3xl shadow-xl flex flex-col justify-between ${
             theme === "dark"
               ? "bg-slate-900/60 border-slate-800"
               : "bg-white border-slate-200"
           }`}
         >
           <div>
-            <h3 className="text-sm font-black mb-1 flex items-center gap-1.5">
+            <h3 className="text-base lg:text-lg font-black mb-2 flex items-center gap-2">
               <span>Progreso del Mes</span>
-              <span className="text-xs text-indigo-500 font-bold">
+              <span className="text-sm text-indigo-500 font-bold">
                 ({MONTHS[selectedMonth - 1].fullName})
               </span>
             </h3>
-            <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+            <p className="text-xs text-slate-500 leading-relaxed font-semibold max-w-xl">
               Mapea el porcentaje de obligaciones de este mes que has liquidado.
             </p>
           </div>
 
-          <div className="my-6 flex flex-col items-center justify-center">
+          <div className="my-7 flex flex-col items-center justify-center">
             {selectedStats.totalDue > 0 ? (
               (() => {
                 const percent = Math.min(
@@ -539,7 +547,7 @@ export default function SchedulePage() {
                 );
                 const strokeDashoffset = 251.2 - (251.2 * percent) / 100;
                 return (
-                  <div className="relative w-36 h-36 flex items-center justify-center">
+                  <div className="relative w-40 h-40 lg:w-44 lg:h-44 flex items-center justify-center">
                     <svg
                       className="w-full h-full transform -rotate-90"
                       viewBox="0 0 100 100"
@@ -570,7 +578,7 @@ export default function SchedulePage() {
                     </svg>
                     <div className="absolute flex flex-col items-center justify-center">
                       <span
-                        className={`text-2xl font-black ${theme === "dark" ? "text-white" : "text-slate-900"}`}
+                        className={`text-3xl font-black ${theme === "dark" ? "text-white" : "text-slate-900"}`}
                       >
                         {percent}%
                       </span>
@@ -591,33 +599,57 @@ export default function SchedulePage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-850 pt-4 text-xs font-semibold">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 border-t border-slate-100 dark:border-slate-850 pt-5 text-xs font-semibold">
             <div>
-              <span className="block text-[9px] uppercase font-bold text-slate-450 tracking-wider">
+              <span className="block text-[9px] uppercase font-bold text-slate-450 tracking-wider mb-1">
                 Flujo de Ingresos
               </span>
-              <span className="text-sm font-black text-emerald-500">
+              <span className="text-base font-black text-emerald-500">
                 {formatCurrency(selectedStats.totalIncome)}
               </span>
+              {selectedStats.primasIncome > 0 && (
+                <span className="block text-[10px] mt-1 text-indigo-500 font-bold">
+                  + {formatCurrency(selectedStats.primasIncome)} Primas autocalculadas
+                </span>
+              )}
             </div>
             <div>
-              <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-wider">
-                Total Deudas
+              <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-1">
+                Pagos proyectados
               </span>
               <span
-                className={`text-sm font-black ${selectedStats.totalPending > 0 ? "text-rose-500" : "text-slate-400"}`}
+                className={`text-base font-black ${projectedPaymentsFlow > 0 ? "text-rose-500" : "text-slate-400"}`}
               >
-                {formatCurrency(selectedStats.totalPending)}
+                {formatCurrency(projectedPaymentsFlow)}
               </span>
             </div>
             <div>
-              <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-wider">
-                Disponible
+              <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-wider mb-1">
+                Disponible proyectado
               </span>
               <span
-                className={`text-sm font-black ${incomeMinusPending >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                className={`text-base font-black ${projectedAvailableAfterPayments >= 0 ? "text-emerald-500" : "text-rose-500"}`}
               >
-                {formatCurrency(incomeMinusPending)}
+                {formatCurrency(projectedAvailableAfterPayments)}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-2">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Pagado real a hoy
+              </span>
+              <span className="text-sm font-black text-slate-700 dark:text-slate-300">
+                {formatCurrency(realPaymentsFlow)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800/80">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                Disponible real a hoy
+              </span>
+              <span className={`text-sm font-black ${realAvailableAfterPayments >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                {formatCurrency(realAvailableAfterPayments)}
               </span>
             </div>
           </div>
@@ -625,7 +657,7 @@ export default function SchedulePage() {
 
         {/* 12-Month Bar Chart */}
         <div
-          className={`p-6 border rounded-3xl shadow-xl lg:col-span-2 flex flex-col justify-between ${
+          className={`p-6 border rounded-3xl shadow-xl lg:col-span-3 flex flex-col justify-between ${
             theme === "dark"
               ? "bg-slate-900/60 border-slate-800"
               : "bg-white border-slate-200"
@@ -700,7 +732,7 @@ export default function SchedulePage() {
                   </div>
 
                   <span
-                    className={`text-[10px] font-bold ${isSelected ? "text-indigo-500" : "text-slate-400"}`}
+                    className={`text-[9px] font-bold ${isSelected ? "text-indigo-500" : "text-slate-400"}`}
                   >
                     {d.monthLabel}
                   </span>
@@ -806,7 +838,7 @@ export default function SchedulePage() {
                 ? "No hay transacciones pendientes en este mes."
                 : "No hay transacciones pagadas en este mes."}
             </p>
-            <p className="text-[10px] text-slate-400 mt-1">
+            <p className="text-[9px] text-slate-400 mt-1">
               Haz clic en "Planificar Mes" para asignar un ingreso, gasto o pago
               a deuda específico.
             </p>
@@ -981,79 +1013,83 @@ export default function SchedulePage() {
       />
 
       {/* Debt payment modal */}
-      {payingDebtId && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div
-            className={`w-full max-w-md border rounded-3xl p-6 shadow-2xl relative space-y-4 ${
-              theme === "dark"
-                ? "bg-slate-900 border-slate-800"
-                : "bg-white border-slate-200"
-            }`}
-          >
-            <button
-              onClick={() => {
-                setPayingDebtId(null);
-                setPaymentAmount("");
-              }}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              title="Cerrar modal"
+      {payingDebtId &&
+        createPortal(
+          <div className="fixed inset-0 z-9999 bg-slate-950/65 backdrop-blur-md supports-backdrop-filter:bg-slate-950/45 flex items-center justify-center p-4">
+            <div
+              className={`w-full max-w-md border rounded-3xl p-6 shadow-2xl relative space-y-4 ${
+                theme === "dark"
+                  ? "bg-slate-900 border-slate-800"
+                  : "bg-white border-slate-200"
+              }`}
             >
-              <X className="w-4 h-4" />
-            </button>
+              <button
+                onClick={() => {
+                  setPayingDebtId(null);
+                  setPaymentAmount("");
+                }}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                title="Cerrar modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
 
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                <Coins className="w-5 h-5" />
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-black">
+                  Registrar Abono a Deuda
+                </h3>
               </div>
-              <h3 className="text-base font-black">Registrar Abono a Deuda</h3>
+
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                Ingresa el monto que vas a abonar. Este monto se reducirá de la
+                deuda y creará un registro de pago.
+              </p>
+
+              <form onSubmit={handlePayDebtSubmit} className="space-y-4 pt-2">
+                <div>
+                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+                    Monto de Pago ($)
+                  </label>
+                  <CurrencyInput
+                    value={paymentAmount === "" ? undefined : paymentAmount}
+                    onChange={(val) => setPaymentAmount(val)}
+                    required
+                    placeholder="Ej. 250000"
+                    title="Monto de pago"
+                    className={`w-full border rounded-xl py-2.5 focus:outline-none transition ${
+                      theme === "dark"
+                        ? "bg-slate-950/80 border-slate-800 text-white"
+                        : "bg-slate-50 border-slate-200 text-slate-900"
+                    }`}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayingDebtId(null);
+                      setPaymentAmount("");
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 px-4 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-md cursor-pointer"
+                  >
+                    Confirmar Abono
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-              Ingresa el monto que vas a abonar. Este monto se reducirá de la
-              deuda y creará un registro de pago.
-            </p>
-
-            <form onSubmit={handlePayDebtSubmit} className="space-y-4 pt-2">
-              <div>
-                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-                  Monto de Pago ($)
-                </label>
-                <CurrencyInput
-                  value={paymentAmount === "" ? undefined : paymentAmount}
-                  onChange={(val) => setPaymentAmount(val)}
-                  required
-                  placeholder="Ej. 250000"
-                  title="Monto de pago"
-                  className={`w-full border rounded-xl py-2.5 focus:outline-none transition ${
-                    theme === "dark"
-                      ? "bg-slate-950/80 border-slate-800 text-white"
-                      : "bg-slate-50 border-slate-200 text-slate-900"
-                  }`}
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPayingDebtId(null);
-                    setPaymentAmount("");
-                  }}
-                  className="flex-1 py-3 px-4 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-880 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 px-4 rounded-xl text-xs font-bold bg-indigo-650 hover:bg-indigo-700 text-white transition shadow-md cursor-pointer"
-                >
-                  Confirmar Abono
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       <MonthCloseWizard month={selectedMonth} year={selectedYear} />
     </div>

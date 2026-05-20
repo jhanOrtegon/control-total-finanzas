@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { SyncStatus } from "@/components/layout/sync-status";
 import { AlertBadge } from "@/components/layout/alert-badge";
 import { PeriodSelector } from "@/components/shared/period-selector";
+import { MobileNav } from "@/components/layout/mobile-nav";
 
 export function Header() {
   const pathname = usePathname();
@@ -91,34 +92,37 @@ export function Header() {
     <header className={`backdrop-blur-md border-b sticky top-0 z-20 ${
       theme === "dark" ? "bg-slate-950/40 border-slate-900/60" : "bg-white/70 border-slate-200/80 shadow-sm"
     }`}>
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {pathname !== "/" && (
-            <button
-              onClick={() => router.back()}
-              className={`p-2 rounded-xl transition-colors shrink-0 ${
-                theme === "dark" 
-                  ? "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white" 
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900"
-              }`}
-              title="Retroceder"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          )}
-          <div>
-            <h1 className={`text-xl font-bold tracking-tight ${
-              theme === "dark" ? "text-white" : "text-slate-900"
-            }`}>
-              {title}
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              {subtitle}
-            </p>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-auto min-h-20 py-3 md:py-0 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-0">
+        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+          <div className="flex items-center gap-3">
+            {pathname !== "/" && (
+              <button
+                onClick={() => router.back()}
+                className={`p-2 rounded-xl transition-colors shrink-0 hidden md:block ${
+                  theme === "dark" 
+                    ? "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white" 
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900"
+                }`}
+                title="Retroceder"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div>
+              <h1 className={`text-lg md:text-xl font-bold tracking-tight ${
+                theme === "dark" ? "text-white" : "text-slate-900"
+              }`}>
+                {title}
+              </h1>
+              <p className="hidden md:block text-xs text-slate-500 font-medium">
+                {subtitle}
+              </p>
+            </div>
           </div>
+          <MobileNav />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
           <PeriodSelector compact />
           <SyncStatus />
           <AlertBadge />

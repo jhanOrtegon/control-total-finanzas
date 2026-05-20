@@ -77,7 +77,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`backdrop-blur-md border-r flex flex-col transition-all duration-300 sticky top-0 h-screen z-25 shrink-0 overflow-hidden ${
+      className={`backdrop-blur-md border-r transition-all duration-300 sticky top-0 h-screen z-25 shrink-0 overflow-hidden hidden md:flex flex-col ${
         isExpanded ? "w-64" : "w-20"
       } ${
         theme === "dark"

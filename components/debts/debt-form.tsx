@@ -302,7 +302,7 @@ export function DebtForm({
           <Select
             value={startMonth}
             onValueChange={(val) =>
-              setStartMonth(val === "__default__" ? "" : val)
+              setStartMonth(val === "__default__" ? "" : (val || ""))
             }
           >
             <SelectTrigger

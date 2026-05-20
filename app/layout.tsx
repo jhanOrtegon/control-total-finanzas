@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/providers/auth-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { LoadingProvider } from "@/providers/loading-provider";
+import { ConfirmProvider } from "@/providers/confirm-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -43,10 +44,12 @@ export default function RootLayout({
         <ThemeProvider>
           <LoadingProvider>
             <AuthProvider>
-              <TooltipProvider>
-                {children}
-                <Toaster richColors closeButton />
-              </TooltipProvider>
+              <ConfirmProvider>
+                <TooltipProvider>
+                  {children}
+                  <Toaster richColors closeButton />
+                </TooltipProvider>
+              </ConfirmProvider>
             </AuthProvider>
           </LoadingProvider>
         </ThemeProvider>

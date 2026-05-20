@@ -6,6 +6,7 @@ import { useTheme } from "@/providers/theme-provider";
 import { CATEGORIES_LIST, getCategoryEmoji } from "@/lib/constants";
 import { ChevronDown, Check, Plus, Save, Edit3 } from "lucide-react";
 import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface ExpenseFormProps {
   editingExpense: Expense | null;
@@ -29,7 +30,7 @@ export function ExpenseForm({
 
   // Form fields state
   const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<number | "">("");
   const [category, setCategory] = useState("Comida");
   const [status, setStatus] = useState<"pending" | "paid">("pending");
 
@@ -51,7 +52,7 @@ export function ExpenseForm({
   useEffect(() => {
     if (editingExpense) {
       setTitle(editingExpense.title);
-      setAmount(editingExpense.amount.toString());
+      setAmount(editingExpense.amount);
       setCategory(editingExpense.category);
       setStatus(editingExpense.status);
     } else {
@@ -74,12 +75,7 @@ export function ExpenseForm({
   }, []);
 
   const handleAmountBlur = () => {
-    if (amount) {
-      const parsed = parseFloat(amount);
-      if (!isNaN(parsed)) {
-        setAmount(parsed.toFixed(2));
-      }
-    }
+    // Replaced by CurrencyInput
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,7 +84,7 @@ export function ExpenseForm({
       alert("Por favor ingresa el concepto y el monto.");
       return;
     }
-    const val = parseFloat(amount);
+    const val = amount as number;
     if (isNaN(val) || val <= 0) {
       alert("Monto inválido.");
       return;
@@ -155,15 +151,11 @@ export function ExpenseForm({
         {/* Amount */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Monto ($)</label>
-          <input
-            type="number"
-            step="any"
+          <CurrencyInput
+            value={amount === "" ? undefined : amount}
+            onChange={(val) => setAmount(val)}
             placeholder="Monto total en COP..."
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            onBlur={handleAmountBlur}
-            className={`w-full border rounded-xl py-2.5 px-3.5 text-sm font-semibold focus:outline-none transition ${
+            className={`w-full border rounded-xl py-2.5 focus:outline-none transition ${
               theme === "dark"
                 ? "bg-slate-950/80 border-slate-800 text-white placeholder-slate-600 focus:border-slate-400"
                 : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-slate-450"
@@ -225,7 +217,7 @@ export function ExpenseForm({
         {category !== "Ingresos" && (
           <CategoryBudgetHint
             category={category}
-            amount={parseFloat(amount) || 0}
+            amount={(amount as number) || 0}
           />
         )}
 

@@ -5,28 +5,29 @@ import { useFinance } from "@/providers/finance-provider";
 import { Settings, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 export default function SettingsPage() {
   const { budget, updateBudget, budgetLoading: loading } = useFinance();
 
-  const [income, setIncome] = useState<string>("");
-  const [savingsGoal, setSavingsGoal] = useState<string>("");
-  const [budgetLimit, setBudgetLimit] = useState<string>("");
+  const [income, setIncome] = useState<number | "">("");
+  const [savingsGoal, setSavingsGoal] = useState<number | "">("");
+  const [budgetLimit, setBudgetLimit] = useState<number | "">("");
 
   // Sync inputs with budget data
   useEffect(() => {
     if (budget) {
-      setIncome(budget.monthly_income > 0 ? budget.monthly_income.toString() : "");
-      setSavingsGoal(budget.monthly_savings_goal > 0 ? budget.monthly_savings_goal.toString() : "");
-      setBudgetLimit(budget.monthly_budget > 0 ? budget.monthly_budget.toString() : "");
+      setIncome(budget.monthly_income > 0 ? budget.monthly_income : "");
+      setSavingsGoal(budget.monthly_savings_goal > 0 ? budget.monthly_savings_goal : "");
+      setBudgetLimit(budget.monthly_budget > 0 ? budget.monthly_budget : "");
     }
   }, [budget]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const incVal = parseFloat(income) || 0;
-    const savVal = parseFloat(savingsGoal) || 0;
-    const budVal = parseFloat(budgetLimit) || 0;
+    const incVal = (income as number) || 0;
+    const savVal = (savingsGoal as number) || 0;
+    const budVal = (budgetLimit as number) || 0;
 
     if (incVal < 0 || savVal < 0 || budVal < 0) {
       toast.error("Los valores no pueden ser negativos.");
@@ -56,13 +57,10 @@ export default function SettingsPage() {
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
             Ingresos Mensuales Propios
           </label>
-          <input
-            type="number"
-            step="any"
-            value={income}
-            onChange={(e) => setIncome(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            className="w-full border rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+          <CurrencyInput
+            value={income === "" ? undefined : income}
+            onChange={(val) => setIncome(val)}
+            className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
           />
         </div>
 
@@ -70,13 +68,10 @@ export default function SettingsPage() {
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
             Meta de Ahorro Mensual
           </label>
-          <input
-            type="number"
-            step="any"
-            value={savingsGoal}
-            onChange={(e) => setSavingsGoal(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            className="w-full border rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+          <CurrencyInput
+            value={savingsGoal === "" ? undefined : savingsGoal}
+            onChange={(val) => setSavingsGoal(val)}
+            className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
           />
         </div>
 
@@ -84,13 +79,10 @@ export default function SettingsPage() {
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
             Presupuesto Límite de Gasto
           </label>
-          <input
-            type="number"
-            step="any"
-            value={budgetLimit}
-            onChange={(e) => setBudgetLimit(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            className="w-full border rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+          <CurrencyInput
+            value={budgetLimit === "" ? undefined : budgetLimit}
+            onChange={(val) => setBudgetLimit(val)}
+            className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
           />
         </div>
 

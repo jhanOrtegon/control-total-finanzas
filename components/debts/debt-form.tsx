@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface DebtFormProps {
   editingDebt: Debt | null;
@@ -46,9 +47,9 @@ export function DebtForm({
   const { theme } = useTheme();
 
   const [title, setTitle] = useState("");
-  const [totalAmount, setTotalAmount] = useState("");
-  const [remainingAmount, setRemainingAmount] = useState("");
-  const [minimumPayment, setMinimumPayment] = useState("");
+  const [totalAmount, setTotalAmount] = useState<number | "">("");
+  const [remainingAmount, setRemainingAmount] = useState<number | "">("");
+  const [minimumPayment, setMinimumPayment] = useState<number | "">("");
   const [dueDate, setDueDate] = useState("");
   const [installments, setInstallments] = useState("");
   const [startMonth, setStartMonth] = useState("");
@@ -74,9 +75,9 @@ export function DebtForm({
   useEffect(() => {
     if (editingDebt) {
       setTitle(editingDebt.title);
-      setTotalAmount(editingDebt.total_amount.toString());
-      setRemainingAmount(editingDebt.remaining_amount.toString());
-      setMinimumPayment(editingDebt.minimum_payment.toString());
+      setTotalAmount(editingDebt.total_amount);
+      setRemainingAmount(editingDebt.remaining_amount);
+      setMinimumPayment(editingDebt.minimum_payment);
       setDueDate(editingDebt.due_date || "");
       setInstallments(editingDebt.installments?.toString() || "");
       setStartMonth(editingDebt.start_month || "");
@@ -88,12 +89,11 @@ export function DebtForm({
 
   // Auto-calculate minimum payment when installments change
   useEffect(() => {
-    if (autoCalculate && installments && remainingAmount) {
+    if (autoCalculate && installments && typeof remainingAmount === 'number') {
       const numInstallments = parseInt(installments);
-      const remaining = parseFloat(remainingAmount);
-      if (numInstallments > 0 && remaining > 0) {
-        const calculated = remaining / numInstallments;
-        setMinimumPayment(calculated.toFixed(2));
+      if (numInstallments > 0 && remainingAmount > 0) {
+        const calculated = remainingAmount / numInstallments;
+        setMinimumPayment(calculated);
       }
     }
   }, [installments, remainingAmount, autoCalculate]);
@@ -115,40 +115,19 @@ export function DebtForm({
     setAutoCalculate(false);
   };
 
-  const handleTotalAmountBlur = () => {
-    if (totalAmount) {
-      const parsed = parseFloat(totalAmount);
-      if (!isNaN(parsed)) setTotalAmount(parsed.toFixed(2));
-    }
-  };
-
-  const handleRemainingAmountBlur = () => {
-    if (remainingAmount) {
-      const parsed = parseFloat(remainingAmount);
-      if (!isNaN(parsed)) setRemainingAmount(parsed.toFixed(2));
-    }
-  };
-
-  const handleMinimumPaymentBlur = () => {
-    if (minimumPayment) {
-      const parsed = parseFloat(minimumPayment);
-      if (!isNaN(parsed)) setMinimumPayment(parsed.toFixed(2));
-    }
-  };
-
   const handleInstallmentsChange = (value: string) => {
     setInstallments(value);
-    if (value && remainingAmount) {
+    if (value && typeof remainingAmount === 'number') {
       setAutoCalculate(true);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !totalAmount || !remainingAmount) return;
-    const total = parseFloat(totalAmount);
-    const remaining = parseFloat(remainingAmount);
-    const minimum = parseFloat(minimumPayment) || 0;
+    if (!title || totalAmount === "" || remainingAmount === "") return;
+    const total = totalAmount as number;
+    const remaining = remainingAmount as number;
+    const minimum = (minimumPayment as number) || 0;
 
     if (isNaN(total) || total <= 0 || isNaN(remaining) || remaining < 0) return;
     if (remaining > total) return;
@@ -218,14 +197,10 @@ export function DebtForm({
         {/* Total Amount */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Monto Inicial Prestado</label>
-          <input
-            type="number"
-            step="any"
+          <CurrencyInput
+            value={totalAmount === "" ? undefined : totalAmount}
+            onChange={(val) => setTotalAmount(val)}
             placeholder="Monto total original..."
-            value={totalAmount}
-            onChange={(e) => setTotalAmount(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            onBlur={handleTotalAmountBlur}
             className={inputClass}
           />
         </div>
@@ -233,14 +208,10 @@ export function DebtForm({
         {/* Remaining Amount */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Saldo Restante Actual</label>
-          <input
-            type="number"
-            step="any"
+          <CurrencyInput
+            value={remainingAmount === "" ? undefined : remainingAmount}
+            onChange={(val) => setRemainingAmount(val)}
             placeholder="Monto pendiente hoy..."
-            value={remainingAmount}
-            onChange={(e) => setRemainingAmount(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            onBlur={handleRemainingAmountBlur}
             className={inputClass}
           />
         </div>
@@ -268,9 +239,9 @@ export function DebtForm({
               </div>
             )}
           </div>
-          {installments && remainingAmount && (
+          {installments && typeof remainingAmount === 'number' && (
             <p className="text-[10px] text-slate-500 mt-1 font-medium">
-              Cuota calculada: {(parseFloat(remainingAmount || "0") / parseInt(installments || "1")).toLocaleString("es-CO", { style: "currency", currency: "COP" })}/mes
+              Cuota calculada: {(remainingAmount / parseInt(installments || "1")).toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })}/mes
             </p>
           )}
         </div>
@@ -278,17 +249,13 @@ export function DebtForm({
         {/* Minimum Payment */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Pago Mínimo Mensual</label>
-          <input
-            type="number"
-            step="any"
-            placeholder="Cuota fija o amortización mínima..."
-            value={minimumPayment}
-            onChange={(e) => {
-              setMinimumPayment(e.target.value);
+          <CurrencyInput
+            value={minimumPayment === "" ? undefined : minimumPayment}
+            onChange={(val) => {
+              setMinimumPayment(val);
               setAutoCalculate(false);
             }}
-            onFocus={(e) => e.target.select()}
-            onBlur={handleMinimumPaymentBlur}
+            placeholder="Cuota fija o amortización mínima..."
             className={inputClass}
           />
         </div>

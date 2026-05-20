@@ -28,6 +28,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { EnvelopeAllocationChart } from "@/components/budgets/envelope-allocation-chart";
 import { AlertCenter } from "@/components/alerts/alert-center";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 type SortMode = "usage" | "name" | "remaining";
 
@@ -54,15 +55,15 @@ export function CategoryEnvelopes() {
   const monthlyBudget = budget?.monthly_budget ?? 0;
   const spendablePool = getSpendablePool(income, monthlyBudget, savingsGoal);
 
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, number | "">>({});
   const [sortMode, setSortMode] = useState<SortMode>("usage");
   const [savingAll, setSavingAll] = useState(false);
 
   useEffect(() => {
-    const next: Record<string, string> = {};
+    const next: Record<string, number | ""> = {};
     for (const cat of SPEND_CATEGORIES) {
       const row = categoryBudgets.find((c) => c.category === cat);
-      next[cat] = row ? String(row.monthly_limit) : "";
+      next[cat] = row ? row.monthly_limit : "";
     }
     setDrafts(next);
   }, [categoryBudgets]);
@@ -90,7 +91,7 @@ export function CategoryEnvelopes() {
   }, [rows, sortMode]);
 
   const saveOne = async (category: string) => {
-    const val = parseFloat(drafts[category] || "0");
+    const val = (drafts[category] as number) || 0;
     if (isNaN(val) || val < 0) return;
     await upsertCategoryLimit(category, val);
   };
@@ -99,7 +100,7 @@ export function CategoryEnvelopes() {
     setSavingAll(true);
     const limits: Record<string, number> = {};
     for (const cat of SPEND_CATEGORIES) {
-      const val = parseFloat(drafts[cat] || "0");
+      const val = (drafts[cat] as number) || 0;
       limits[cat] = isNaN(val) || val < 0 ? 0 : val;
     }
     await batchUpsertLimits(limits);
@@ -110,9 +111,7 @@ export function CategoryEnvelopes() {
     if (spendablePool <= 0) return;
     const suggested = suggestEnvelopeLimits(spendablePool);
     setDrafts(
-      Object.fromEntries(
-        SPEND_CATEGORIES.map((c) => [c, String(suggested[c] ?? 0)]),
-      ),
+      Object.fromEntries(SPEND_CATEGORIES.map((c) => [c, suggested[c] ?? 0])),
     );
     await applySuggestedEnvelopes(spendablePool);
   };
@@ -120,9 +119,7 @@ export function CategoryEnvelopes() {
   const copyFromDrafts = () => {
     const suggested = suggestEnvelopeLimits(spendablePool);
     setDrafts(
-      Object.fromEntries(
-        SPEND_CATEGORIES.map((c) => [c, String(suggested[c] ?? 0)]),
-      ),
+      Object.fromEntries(SPEND_CATEGORIES.map((c) => [c, suggested[c] ?? 0])),
     );
   };
 
@@ -132,9 +129,7 @@ export function CategoryEnvelopes() {
       bufferPct: 5,
     });
     setDrafts(
-      Object.fromEntries(
-        SPEND_CATEGORIES.map((c) => [c, String(limits[c] ?? 0)]),
-      ),
+      Object.fromEntries(SPEND_CATEGORIES.map((c) => [c, limits[c] ?? 0])),
     );
     await batchUpsertLimits(limits);
   };
@@ -168,8 +163,14 @@ export function CategoryEnvelopes() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center sm:text-left">
-          <MiniStat label="Total asignado" value={formatCurrency(totals.totalLimits)} />
-          <MiniStat label="Gastado este mes" value={formatCurrency(totals.totalSpent)} />
+          <MiniStat
+            label="Total asignado"
+            value={formatCurrency(totals.totalLimits)}
+          />
+          <MiniStat
+            label="Gastado este mes"
+            value={formatCurrency(totals.totalSpent)}
+          />
           <MiniStat
             label="Sin asignar"
             value={formatCurrency(totals.unallocated)}
@@ -243,6 +244,7 @@ export function CategoryEnvelopes() {
             <select
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
+              title="Ordenar categorías"
               className={`border rounded-lg py-1 px-2 text-[10px] font-black cursor-pointer ${
                 theme === "dark"
                   ? "bg-slate-950 border-slate-800"
@@ -256,16 +258,16 @@ export function CategoryEnvelopes() {
           </label>
         </div>
 
-        <ul className="space-y-3">
+        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {sortedRows.map((row) => {
-            const limit = parseFloat(drafts[row.category] || "0") || 0;
+            const limit = (drafts[row.category] as number) || 0;
             const pct =
               limit > 0 ? Math.min(100, (row.spent / limit) * 100) : 0;
 
             return (
               <li
                 key={row.category}
-                className={`p-4 rounded-2xl border space-y-2 ${
+                className={`p-4 rounded-2xl border space-y-2 flex flex-col justify-between h-full ${
                   row.over
                     ? "border-rose-500/40 bg-rose-500/5"
                     : theme === "dark"
@@ -288,15 +290,17 @@ export function CategoryEnvelopes() {
                   <>
                     <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-900 overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${row.over ? "bg-rose-500" : "bg-indigo-500"}`}
-                        style={{ width: `${pct}%` }}
+                        className={`h-full rounded-full transition-all ${row.over ? "bg-rose-500" : "bg-indigo-500"} envelope-bar-width`}
+                        data-width={pct}
                       />
                     </div>
                     <p className="text-[9px] font-bold text-slate-500">
                       Disponible:{" "}
                       <span
                         className={
-                          row.remaining < 0 ? "text-rose-500" : "text-emerald-600"
+                          row.remaining < 0
+                            ? "text-rose-500"
+                            : "text-emerald-600"
                         }
                       >
                         {formatCurrency(row.remaining)}
@@ -305,19 +309,21 @@ export function CategoryEnvelopes() {
                     </p>
                   </>
                 )}
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    value={drafts[row.category] ?? ""}
-                    onChange={(e) =>
+                <div className="flex gap-2 mt-2">
+                  <CurrencyInput
+                    value={
+                      drafts[row.category] === ""
+                        ? undefined
+                        : (drafts[row.category] as number | undefined)
+                    }
+                    onChange={(val) =>
                       setDrafts((d) => ({
                         ...d,
-                        [row.category]: e.target.value,
+                        [row.category]: val,
                       }))
                     }
                     placeholder="Límite mensual COP"
-                    className={`flex-1 border rounded-lg py-1.5 px-2 text-xs font-bold ${
+                    className={`flex-1 border rounded-lg py-1.5 focus:outline-none text-xs font-bold ${
                       theme === "dark"
                         ? "bg-slate-950 border-slate-800"
                         : "bg-white border-slate-200"

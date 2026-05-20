@@ -16,24 +16,25 @@ import {
   BriefcaseBusiness,
   ShieldCheck,
 } from "lucide-react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 export default function SimulatorPage() {
   const { theme } = useTheme();
   const { budget, debts } = useFinance();
 
   // Simulator state variables
-  const [initialCapital, setInitialCapital] = useState<string>("1000000"); // 1M COP default
-  const [monthlySavings, setMonthlySavings] = useState<string>("");
+  const [initialCapital, setInitialCapital] = useState<number | "">(1000000); // 1M COP default
+  const [monthlySavings, setMonthlySavings] = useState<number | "">("");
   const [annualRate, setAnnualRate] = useState<string>("12"); // 12% CDT/Investment return
-  const [extraDebtPay, setExtraDebtPay] = useState<string>("200000"); // 200k COP extra default
+  const [extraDebtPay, setExtraDebtPay] = useState<number | "">(200000); // 200k COP extra default
   const [horizonMonths, setHorizonMonths] = useState<number>(60); // 5 years default
 
   // Pre-populate savings contribution from user's budget settings once loaded
   useEffect(() => {
     if (budget?.monthly_savings_goal) {
-      setMonthlySavings(budget.monthly_savings_goal.toString());
+      setMonthlySavings(budget.monthly_savings_goal);
     } else {
-      setMonthlySavings("300000"); // fallback
+      setMonthlySavings(300000); // fallback
     }
   }, [budget]);
 
@@ -41,10 +42,10 @@ export default function SimulatorPage() {
   const activeDebts = debts.filter((d) => d.remaining_amount > 0);
 
   // Parse numeric values
-  const initCap = parseFloat(initialCapital) || 0;
-  const monthlySave = parseFloat(monthlySavings) || 0;
+  const initCap = (initialCapital as number) || 0;
+  const monthlySave = (monthlySavings as number) || 0;
   const rate = parseFloat(annualRate) || 0;
-  const extraDebt = parseFloat(extraDebtPay) || 0;
+  const extraDebt = (extraDebtPay as number) || 0;
 
   // Run month-by-month projection simulation
   const monthsTotal = horizonMonths;
@@ -214,18 +215,15 @@ export default function SimulatorPage() {
             <div className="space-y-1.5">
               <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Capital Inicial de Ahorro</label>
               <div className="relative">
-                <input
-                  type="number"
-                  step="any"
-                  value={initialCapital}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setInitialCapital(e.target.value)}
+                <CurrencyInput
+                  value={initialCapital === "" ? undefined : initialCapital}
+                  onChange={(val) => setInitialCapital(val)}
                   title="Capital inicial de ahorro"
-                  className={`w-full border rounded-xl py-2 px-3 text-xs font-bold transition focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 ${
+                  className={`w-full border rounded-xl py-2 focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 text-xs font-bold transition ${
                     theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
                   }`}
                 />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">COP</span>
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">COP</span>
               </div>
             </div>
 
@@ -233,18 +231,15 @@ export default function SimulatorPage() {
             <div className="space-y-1.5">
               <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Ahorro Mensual Nuevo</label>
               <div className="relative">
-                <input
-                  type="number"
-                  step="any"
-                  value={monthlySavings}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => setMonthlySavings(e.target.value)}
+                <CurrencyInput
+                  value={monthlySavings === "" ? undefined : monthlySavings}
+                  onChange={(val) => setMonthlySavings(val)}
                   title="Ahorro mensual nuevo"
-                  className={`w-full border rounded-xl py-2 px-3 text-xs font-bold transition focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 ${
+                  className={`w-full border rounded-xl py-2 focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 text-xs font-bold transition ${
                     theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
                   }`}
                 />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">COP/mes</span>
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">COP/mes</span>
               </div>
             </div>
 
@@ -274,18 +269,15 @@ export default function SimulatorPage() {
               <div className="space-y-1.5">
                 <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Abono Extraordinario Mensual</label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    step="any"
-                    value={extraDebtPay}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setExtraDebtPay(e.target.value)}
+                  <CurrencyInput
+                    value={extraDebtPay === "" ? undefined : extraDebtPay}
+                    onChange={(val) => setExtraDebtPay(val)}
                     title="Abono extraordinario mensual"
-                    className={`w-full border rounded-xl py-2 px-3 text-xs font-bold transition focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 ${
+                    className={`w-full border rounded-xl py-2 focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 text-xs font-bold transition ${
                       theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
                     }`}
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">COP/mes</span>
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">COP/mes</span>
                 </div>
                 <p className="text-[9px] text-slate-400 font-semibold">
                   Monto adicional al pago mínimo mensual asignado exclusivamente a liquidar deudas.

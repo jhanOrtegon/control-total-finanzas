@@ -9,6 +9,8 @@ import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
 import { PlanModal } from "@/components/schedule/plan-modal";
 import { MonthCloseWizard } from "@/components/month-close/month-close-wizard";
 import { Pagination } from "@/components/shared/pagination";
+import { useConfirm } from "@/providers/confirm-provider";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Calendar,
   CheckCircle,
@@ -96,9 +98,10 @@ export default function SchedulePage() {
   ); // 1-12
   const [isPlanOpen, setIsPlanOpen] = useState(false);
   const [payingDebtId, setPayingDebtId] = useState<string | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [paymentAmount, setPaymentAmount] = useState<number | "">("");
   const [obligationsPage, setObligationsPage] = useState(1);
   const [scheduleTab, setScheduleTab] = useState<"pending" | "paid">("pending");
+  const confirm = useConfirm();
 
   const OBLIGATIONS_PER_PAGE = 6;
 
@@ -307,10 +310,20 @@ export default function SchedulePage() {
     await updateExpense(ob.id, { status: ob.isPaid ? "pending" : "paid" });
   };
 
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar transacción",
+      description: "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar",
+      variant: "danger",
+    });
+    if (ok) await deleteExpense(id);
+  };
+
   const handlePayDebtSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!payingDebtId || !paymentAmount) return;
-    const amount = parseFloat(paymentAmount);
+    if (!payingDebtId || paymentAmount === "") return;
+    const amount = paymentAmount as number;
     if (isNaN(amount) || amount <= 0) {
       toast.error("Ingresa un monto de abono válido.");
       return;
@@ -784,7 +797,7 @@ export default function SchedulePage() {
                         <button
                           onClick={() => {
                             setPayingDebtId(ob.debtId);
-                            setPaymentAmount(ob.amount.toString());
+                            setPaymentAmount(ob.amount);
                           }}
                           disabled={ob.isPaid}
                           className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -801,7 +814,7 @@ export default function SchedulePage() {
                         </button>
                       ) : "isIncome" in ob ? (
                         <button
-                          onClick={() => deleteExpense(ob.id)}
+                          onClick={() => handleDelete(ob.id)}
                           className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
                           title="Eliminar Ingreso"
                         >
@@ -816,7 +829,7 @@ export default function SchedulePage() {
                             {ob.isPaid ? "Marcar Pendiente" : "Pagar Factura"}
                           </button>
                           <button
-                            onClick={() => deleteExpense(ob.id)}
+                            onClick={() => handleDelete(ob.id)}
                             className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
                             title="Eliminar Gasto"
                           >
@@ -890,15 +903,13 @@ export default function SchedulePage() {
                 <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
                   Monto de Pago ($)
                 </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
+                <CurrencyInput
+                  value={paymentAmount === "" ? undefined : paymentAmount}
+                  onChange={(val) => setPaymentAmount(val)}
                   required
                   placeholder="Ej. 250000"
                   title="Monto de pago"
-                  className={`w-full border rounded-xl py-2.5 px-3.5 text-sm font-semibold focus:outline-none transition ${
+                  className={`w-full border rounded-xl py-2.5 focus:outline-none transition ${
                     theme === "dark"
                       ? "bg-slate-950/80 border-slate-800 text-white"
                       : "bg-slate-50 border-slate-200 text-slate-900"

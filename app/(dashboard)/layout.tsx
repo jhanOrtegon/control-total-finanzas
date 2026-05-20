@@ -8,6 +8,7 @@ import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import { useTheme } from "@/providers/theme-provider";
 import { FinanceProvider } from "@/providers/finance-provider";
 import { FinancePeriodProvider } from "@/providers/finance-period-provider";
+import { NovaChatbot } from "@/components/ui/nova-chatbot";
 
 export default function DashboardLayout({
   children,
@@ -60,6 +61,7 @@ export default function DashboardLayout({
             </p>
           </footer>
         </div>
+        <NovaChatbot />
       </div>
         </FinancePeriodProvider>
       </Suspense>

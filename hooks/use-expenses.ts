@@ -6,6 +6,7 @@ import { Expense } from "@/types";
 import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
 import { formatCurrency } from "@/lib/utils";
+import { broadcastMutation } from "@/lib/realtime-utils";
 
 export function useExpenses(userId: string | undefined) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -70,6 +71,7 @@ export function useExpenses(userId: string | undefined) {
           };
           setExpenses((prev) => [added, ...prev]);
           toast.success(`✅ ${added.title}`, { description: `${formatCurrency(added.amount)} · ${added.category}` });
+          broadcastMutation(userId, "INSERT_expense", added);
           return added;
         }
         return null;
@@ -109,6 +111,7 @@ export function useExpenses(userId: string | undefined) {
           };
           setExpenses((prev) => prev.map((e) => (e.id === id ? updated : e)));
           toast.success(`✏️ Actualizado: ${updated.title}`, { description: `${formatCurrency(updated.amount)} · ${updated.category}` });
+          broadcastMutation(userId, "UPDATE_expense", updated);
           return updated;
         }
         return null;
@@ -132,6 +135,7 @@ export function useExpenses(userId: string | undefined) {
 
         setExpenses((prev) => prev.filter((e) => e.id !== id));
         toast.success("🗑️ Gasto eliminado");
+        broadcastMutation(userId, "DELETE_expense", { id, title: "Gasto eliminado" });
         return true;
       } catch (err: any) {
         console.error("Error deleting expense:", err);

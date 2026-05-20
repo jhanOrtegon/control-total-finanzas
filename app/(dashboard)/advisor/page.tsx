@@ -7,6 +7,7 @@ import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { getRecurrentTemplates } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { 
   Sparkles, 
   TrendingUp, 
@@ -26,7 +27,7 @@ export default function AdvisorPage() {
   const { month, year, periodLabel, linkWithPeriod } = useFinancePeriod();
 
   const [selectedRule, setSelectedRule] = useState<"503020" | "7030" | "6040">("503020");
-  const [extraPaymentInput, setExtraPaymentInput] = useState<string>("200000");
+  const [extraPaymentInput, setExtraPaymentInput] = useState<number>(200000);
 
   const summary = useMemo(
     () => getMonthlySummary(month, year),
@@ -165,7 +166,7 @@ export default function AdvisorPage() {
     };
   };
 
-  const parsedExtra = parseFloat(extraPaymentInput) || 0;
+  const parsedExtra = extraPaymentInput || 0;
 
   // Timeline with minimum payments only
   const minOnlyTimeline = simulateDebts("snowball", 0);
@@ -438,20 +439,17 @@ export default function AdvisorPage() {
                   Abono Extraordinario Mensual (Simulado)
                 </label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    step="any"
+                  <CurrencyInput
                     value={extraPaymentInput}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) => setExtraPaymentInput(e.target.value)}
+                    onChange={(val) => setExtraPaymentInput(val)}
                     placeholder="Monto adicional"
-                    className={`w-full border rounded-xl py-3 px-4 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 text-sm font-bold transition ${
+                    className={`w-full border rounded-xl py-3 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 text-sm font-bold transition ${
                       theme === "dark"
                         ? "bg-slate-950 border-slate-800 text-white"
                         : "bg-slate-50 border-slate-200 text-slate-900"
                     }`}
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
                     COP
                   </span>
                 </div>

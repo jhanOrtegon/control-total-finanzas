@@ -57,7 +57,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         cancelLabel={state.opts.cancelLabel}
         variant={state.opts.variant}
         onConfirm={handleConfirm}
-        onCancel={handleCancel}
+        onOpenChange={(open) => {
+          if (!open) handleCancel();
+        }}
       />
     </ConfirmContext.Provider>
   );

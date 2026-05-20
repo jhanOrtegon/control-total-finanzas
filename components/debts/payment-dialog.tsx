@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useTheme } from "@/providers/theme-provider";
 import { Coins, X } from "lucide-react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface PaymentDialogProps {
   debtTitle: string;
@@ -18,13 +19,13 @@ export function PaymentDialog({
   onClose,
 }: PaymentDialogProps) {
   const { theme } = useTheme();
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<number | "">("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount) return;
-    const val = parseFloat(amount);
+    if (amount === "") return;
+    const val = amount as number;
     if (isNaN(val) || val <= 0) {
       alert("Ingresa un monto de abono válido mayor a 0.");
       return;
@@ -63,13 +64,12 @@ export function PaymentDialog({
           <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
             Monto a abonar (COP)
           </label>
-          <input
-            type="number"
+          <CurrencyInput
+            value={amount === "" ? undefined : amount}
+            onChange={(val) => setAmount(val)}
             placeholder="Ej. 150000"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
             disabled={loading}
-            className={`w-full border rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500 text-xs font-semibold ${
+            className={`w-full border rounded-xl py-2 focus:outline-none focus:border-indigo-500 text-xs font-semibold ${
               theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
             }`}
           />

@@ -27,72 +27,51 @@ import {
 
 export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
+
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   if (!user) return null;
 
-  const navItems = [
+  const navGroups = [
     {
-      href: "/",
-      label: "Dashboard Deudas",
-      icon: BarChart3,
+      title: "General",
+      items: [{ href: "/", label: "Dashboard Deudas", icon: BarChart3 }],
     },
     {
-      href: "/expenses",
-      label: "Control de Gastos",
-      icon: Layers,
+      title: "Finanzas y Control",
+      items: [
+        { href: "/expenses", label: "Control de Gastos", icon: Layers },
+        { href: "/debts", label: "Mis Deudas Activas", icon: ShieldAlert },
+        { href: "/budgets", label: "Sobres por Categoría", icon: Wallet },
+      ],
     },
     {
-      href: "/schedule",
-      label: "Cronograma de Pagos",
-      icon: Calendar,
+      title: "Planificación y Análisis",
+      items: [
+        { href: "/schedule", label: "Cronograma de Pagos", icon: Calendar },
+        { href: "/simulator", label: "Simulador de Futuro", icon: TrendingUp },
+        { href: "/trends", label: "Evolución y Cierre", icon: LineChart },
+      ],
     },
     {
-      href: "/debts",
-      label: "Mis Deudas Activas",
-      icon: ShieldAlert,
+      title: "Reportes y Registros",
+      items: [
+        { href: "/history", label: "Historial / Trazabilidad", icon: History },
+        { href: "/reports", label: "Informes Detallados", icon: FileBarChart },
+      ],
     },
     {
-      href: "/advisor",
-      label: "Asesor Economista Pro",
-      icon: Sparkles,
+      title: "Herramientas",
+      items: [
+        { href: "/advisor", label: "Asesor Economista Pro", icon: Sparkles },
+        { href: "/alerts", label: "Alertas y Vencimientos", icon: Bell },
+      ],
     },
     {
-      href: "/simulator",
-      label: "Simulador de Futuro",
-      icon: TrendingUp,
-    },
-    {
-      href: "/alerts",
-      label: "Alertas y Vencimientos",
-      icon: Bell,
-    },
-    {
-      href: "/history",
-      label: "Historial / Trazabilidad",
-      icon: History,
-    },
-    {
-      href: "/trends",
-      label: "Evolución y Cierre",
-      icon: LineChart,
-    },
-    {
-      href: "/reports",
-      label: "Informes Detallados",
-      icon: FileBarChart,
-    },
-    {
-      href: "/budgets",
-      label: "Sobres por Categoría",
-      icon: Wallet,
-    },
-    {
-      href: "/settings",
-      label: "Ajustes Generales",
-      icon: Settings,
+      title: "Sistema",
+      items: [{ href: "/settings", label: "Ajustes Generales", icon: Settings }],
     },
   ];
 
@@ -128,34 +107,51 @@ export function Sidebar() {
       </div>
 
       {/* Navigation links (scrollable) */}
-      <div className="flex-1 overflow-y-auto p-4">
-        <nav className="space-y-2.5 pr-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`w-full flex items-center rounded-xl text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60 ${
-                  isExpanded ? "gap-3.5 px-4 py-3 justify-start" : "justify-center p-3"
-                } ${
-                  isActive
-                    ? theme === "dark"
-                      ? "bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 shadow-sm ring-1 ring-indigo-400/20"
-                      : "bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-sm ring-1 ring-indigo-200"
-                    : theme === "dark"
-                    ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                }`}
-                aria-current={isActive ? "page" : undefined}
-                title={!isExpanded ? item.label : undefined}
-              >
-                <Icon className="w-5 h-5 shrink-0" />
-                {isExpanded && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <nav className="space-y-6 pr-1">
+          {navGroups.map((group, groupIdx) => (
+            <div key={group.title} className="space-y-2">
+              {/* Group Header */}
+              {isExpanded && (
+                <div className="px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  {group.title}
+                </div>
+              )}
+              {(!isExpanded && groupIdx > 0) && (
+                <div className="w-8 h-px bg-slate-200 dark:bg-slate-800 my-4 mx-auto" />
+              )}
+
+              {/* Items */}
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`w-full flex items-center rounded-xl text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/60 ${
+                        isExpanded ? "gap-3.5 px-3 py-2.5 justify-start" : "justify-center p-3"
+                      } ${
+                        isActive
+                          ? theme === "dark"
+                            ? "bg-indigo-500/20 text-indigo-300 shadow-sm ring-1 ring-indigo-400/20"
+                            : "bg-indigo-50 text-indigo-700 shadow-sm ring-1 ring-indigo-200"
+                          : theme === "dark"
+                          ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                      title={!isExpanded ? item.label : undefined}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {isExpanded && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
       </div>
 

@@ -39,6 +39,7 @@ import type {
   MonthlySnapshot,
   UserBudget,
 } from "@/types";
+import type { ConnectionState } from "@insforge/sdk";
 
 interface FinanceContextType {
   budget: UserBudget | null;
@@ -51,6 +52,7 @@ interface FinanceContextType {
   loading: boolean;
   lastSyncedAt: Date | null;
   sessionCount: number;
+  connectionState: ConnectionState;
   refetchAll: () => Promise<void>;
   getMonthlySummary: (month: number, year: number) => MonthlyFinanceSummary;
   currentMonthSummary: MonthlyFinanceSummary;
@@ -145,7 +147,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Realtime
-  useRealtime(userId, {
+  const { connectionState } = useRealtime(userId, {
     onExpenseChange: applyRealtimeExpense,
     onDebtChange: applyRealtimeDebt,
     onDebtPaymentChange: (_op) => {
@@ -155,6 +157,27 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     onBudgetChange: applyRealtimeBudget,
     onCategoryBudgetChange: applyRealtimeCategoryBudget,
     onSessionCount: setSessionCount,
+    onRealtimeEvent: (type, op, title) => {
+      const labels: Record<string, string> = {
+        expense: "Gasto",
+        debt: "Deuda",
+        payment: "Abono",
+        budget: "Presupuesto",
+      };
+      const opLabels: Record<string, string> = {
+        INSERT: "agregado",
+        UPDATE: "actualizado",
+        DELETE: "eliminado",
+      };
+      const entity = labels[type] || type;
+      const action = opLabels[op] || op;
+      const desc = title ? `${entity}: ${title}` : entity;
+      toast.info(`📡 ${desc} ${action}`, {
+        description: "Cambio sincronizado desde otra sesión",
+        duration: 3000,
+      });
+      touchSync();
+    },
   });
 
   // Push notifications setup
@@ -349,6 +372,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       loading,
       lastSyncedAt,
       sessionCount,
+      connectionState,
       refetchAll,
       getMonthlySummary,
       currentMonthSummary,
@@ -384,6 +408,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       loading,
       lastSyncedAt,
       sessionCount,
+      connectionState,
       refetchAll,
       getMonthlySummary,
       currentMonthSummary,

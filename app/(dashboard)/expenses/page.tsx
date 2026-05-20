@@ -10,6 +10,8 @@ import { Pagination } from "@/components/shared/pagination";
 import { Expense } from "@/types";
 import { CATEGORIES_LIST, getCategoryColor, getCategoryEmoji } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { useConfirm } from "@/providers/confirm-provider";
 import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2 } from "lucide-react";
 import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 
@@ -20,14 +22,14 @@ export default function ExpensesPage() {
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [detailExpense, setDetailExpense] = useState<Expense | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<"recurring" | "month">("month");
   const [recurringPage, setRecurringPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
 
   const [txType, setTxType] = useState<"expense" | "income">("expense");
   const [txTitle, setTxTitle] = useState("");
-  const [txAmount, setTxAmount] = useState("");
+  const [txAmount, setTxAmount] = useState<number | "">("");
   const [txCategory, setTxCategory] = useState("Comida");
   const [txMarkAsPaid, setTxMarkAsPaid] = useState(false);
 
@@ -37,25 +39,51 @@ export default function ExpensesPage() {
 
   const handleSaveExpense = async (payload: Omit<Expense, "id" | "user_id" | "created_at" | "paid_date">) => {
     if (editingExpense) {
+      const ok = await confirm({
+        title: "Actualizar movimiento",
+        description: "¿Estás seguro de que deseas guardar los cambios en este movimiento?",
+        confirmLabel: "Guardar Cambios",
+      });
+      if (!ok) return;
+
       await updateExpense(editingExpense.id, payload);
       setEditingExpense(null);
     } else {
+      const ok = await confirm({
+        title: "Crear plantilla",
+        description: "¿Deseas crear esta nueva plantilla de gasto recurrente?",
+        confirmLabel: "Crear",
+      });
+      if (!ok) return;
+
       await addExpense(payload);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (deleteId) {
-      await deleteExpense(deleteId);
-      setDeleteId(null);
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar Gasto",
+      description: "¿Estás seguro de que quieres eliminar este movimiento? Esta acción no se puede deshacer.",
+      confirmLabel: "Sí, eliminar",
+      variant: "danger",
+    });
+    if (ok) {
+      await deleteExpense(id);
     }
   };
 
   const handleCreateMonthlyTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!txTitle || !txAmount) return;
-    const value = parseFloat(txAmount);
+    const value = txAmount as number;
     if (isNaN(value) || value <= 0) return;
+
+    const ok = await confirm({
+      title: "Registrar movimiento",
+      description: `¿Estás seguro de registrar este ${txType === "income" ? "ingreso" : "gasto"} por valor de ${formatCurrency(value)}?`,
+      confirmLabel: "Registrar",
+    });
+    if (!ok) return;
 
     const payload: Omit<Expense, "id" | "user_id" | "created_at" | "paid_date"> = {
       title: txTitle,
@@ -171,7 +199,7 @@ export default function ExpensesPage() {
                         expense={expense}
                         isEditing={editingExpense?.id === expense.id}
                         onStartEdit={setEditingExpense}
-                        onDelete={(id) => setDeleteId(id)}
+                        onDelete={handleDelete}
                         onViewDetail={setDetailExpense}
                       />
                     ))
@@ -213,7 +241,7 @@ export default function ExpensesPage() {
                               <Eye className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => setDeleteId(expense.id)}
+                              onClick={() => handleDelete(expense.id)}
                               className="p-1.5 rounded-lg border transition cursor-pointer bg-slate-100 hover:bg-rose-500/10 hover:text-rose-500 border-slate-200 hover:border-rose-500/20 text-slate-500"
                               title="Eliminar Gasto"
                             >
@@ -310,14 +338,12 @@ export default function ExpensesPage() {
 
                 <div>
                   <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Monto ($)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={txAmount}
-                    onChange={(e) => setTxAmount(e.target.value)}
-                    placeholder="0.00"
+                  <CurrencyInput
+                    value={txAmount === "" ? undefined : txAmount}
+                    onChange={(val) => setTxAmount(val)}
+                    placeholder="Monto"
                     title="Monto del movimiento"
-                    className="w-full border rounded-xl py-2.5 px-3.5 text-sm font-semibold bg-slate-50 border-slate-200"
+                    className="w-full border rounded-xl py-2.5 bg-slate-50 border-slate-200 text-sm font-semibold"
                   />
                 </div>
 
@@ -344,7 +370,7 @@ export default function ExpensesPage() {
                     <div className="mt-2">
                       <CategoryBudgetHint
                         category={txCategory}
-                        amount={parseFloat(txAmount) || 0}
+                        amount={(txAmount as number) || 0}
                       />
                     </div>
                   </div>
@@ -382,18 +408,6 @@ export default function ExpensesPage() {
         expense={detailExpense}
         open={!!detailExpense}
         onOpenChange={(open) => { if (!open) setDetailExpense(null); }}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={!!deleteId}
-        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Eliminar Gasto"
-        description="¿Estás seguro de que quieres eliminar este gasto? Esta acción no se puede deshacer."
-        confirmLabel="Sí, eliminar"
-        cancelLabel="Cancelar"
-        variant="danger"
-        onConfirm={handleConfirmDelete}
       />
     </div>
   );

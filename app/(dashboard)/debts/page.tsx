@@ -6,7 +6,7 @@ import { DebtCard } from "@/components/debts/debt-card";
 import { DebtForm } from "@/components/debts/debt-form";
 import { PaymentDialog } from "@/components/debts/payment-dialog";
 import { DebtDetailDialog } from "@/components/debts/debt-detail-dialog";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { useConfirm } from "@/providers/confirm-provider";
 import { Pagination } from "@/components/shared/pagination";
 import { Debt } from "@/types";
 import { ShieldAlert } from "lucide-react";
@@ -20,8 +20,8 @@ export default function DebtsPage() {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [payingDebtId, setPayingDebtId] = useState<string | null>(null);
   const [detailDebt, setDetailDebt] = useState<Debt | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const confirm = useConfirm();
 
   // Pagination
   const totalPages = Math.ceil(debts.length / ITEMS_PER_PAGE);
@@ -32,17 +32,36 @@ export default function DebtsPage() {
 
   const handleSaveDebt = async (payload: Omit<Debt, "id" | "user_id" | "created_at">) => {
     if (editingDebt) {
+      const ok = await confirm({
+        title: "Actualizar Deuda",
+        description: "¿Estás seguro de que deseas guardar los cambios en esta deuda?",
+        confirmLabel: "Guardar Cambios",
+      });
+      if (!ok) return;
+
       await updateDebt(editingDebt.id, payload);
       setEditingDebt(null);
     } else {
+      const ok = await confirm({
+        title: "Registrar Deuda",
+        description: "¿Confirmas el registro de esta nueva deuda?",
+        confirmLabel: "Registrar",
+      });
+      if (!ok) return;
+
       await addDebt(payload);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (deleteId) {
-      await deleteDebt(deleteId);
-      setDeleteId(null);
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Eliminar Deuda",
+      description: "¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer y perderás el historial de pagos asociado.",
+      confirmLabel: "Sí, eliminar",
+      variant: "danger",
+    });
+    if (ok) {
+      await deleteDebt(id);
     }
   };
 
@@ -95,7 +114,7 @@ export default function DebtsPage() {
                     isEditing={editingDebt?.id === debt.id}
                     onAbonarClick={setPayingDebtId}
                     onStartEdit={setEditingDebt}
-                    onDelete={(id) => setDeleteId(id)}
+                    onDelete={handleDelete}
                     onViewDetail={setDetailDebt}
                   />
                 ))}
@@ -128,18 +147,6 @@ export default function DebtsPage() {
         debt={detailDebt}
         open={!!detailDebt}
         onOpenChange={(open) => { if (!open) setDetailDebt(null); }}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={!!deleteId}
-        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
-        title="Eliminar Deuda"
-        description="¿Estás seguro de que quieres eliminar esta deuda? Esta acción no se puede deshacer y perderás el historial de pagos asociado."
-        confirmLabel="Sí, eliminar"
-        cancelLabel="Cancelar"
-        variant="danger"
-        onConfirm={handleConfirmDelete}
       />
     </div>
   );

@@ -1,14 +1,15 @@
 "use client";
 
-import React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/providers/theme-provider";
+import { ArrowLeft } from "lucide-react";
 import { SyncStatus } from "@/components/layout/sync-status";
 import { AlertBadge } from "@/components/layout/alert-badge";
 import { PeriodSelector } from "@/components/shared/period-selector";
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme } = useTheme();
 
   const getRouteDetails = () => {
@@ -91,21 +92,36 @@ export function Header() {
       theme === "dark" ? "bg-slate-950/40 border-slate-900/60" : "bg-white/70 border-slate-200/80 shadow-sm"
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <div>
-          <h1 className={`text-xl font-bold tracking-tight ${
-            theme === "dark" ? "text-white" : "text-slate-900"
-          }`}>
-            {title}
-          </h1>
-          <p className="text-xs text-slate-500 font-medium">
-            {subtitle}
-          </p>
+        <div className="flex items-center gap-4">
+          {pathname !== "/" && (
+            <button
+              onClick={() => router.back()}
+              className={`p-2 rounded-xl transition-colors shrink-0 ${
+                theme === "dark" 
+                  ? "bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white" 
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900"
+              }`}
+              title="Retroceder"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+          )}
+          <div>
+            <h1 className={`text-xl font-bold tracking-tight ${
+              theme === "dark" ? "text-white" : "text-slate-900"
+            }`}>
+              {title}
+            </h1>
+            <p className="text-xs text-slate-500 font-medium">
+              {subtitle}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
           <PeriodSelector compact />
-          <AlertBadge />
           <SyncStatus />
+          <AlertBadge />
         </div>
       </div>
     </header>

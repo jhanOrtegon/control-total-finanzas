@@ -7,20 +7,7 @@ import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
 import { insertDebtPaymentRecord } from "@/hooks/use-debt-payments";
 import { formatCurrency } from "@/lib/utils";
-
-const OPTIONAL_DEBT_COLUMNS = ["installments", "start_month"] as const;
-
-const isMissingDebtColumnError = (err: any, column: (typeof OPTIONAL_DEBT_COLUMNS)[number]) => {
-  return err?.code === "PGRST204" && typeof err?.message === "string" && err.message.includes(`'${column}'`);
-};
-
-const stripOptionalDebtColumns = <T extends Record<string, any>>(payload: T) => {
-  const next = { ...payload };
-  for (const column of OPTIONAL_DEBT_COLUMNS) {
-    delete next[column];
-  }
-  return next;
-};
+import { broadcastMutation } from "@/lib/realtime-utils";
 
 export function useDebts(userId: string | undefined, onPaymentSuccess?: () => void) {
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -77,38 +64,23 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
         const { data, error } = await insforge.database
           .from("debts")
           .insert([newPayload])
-          .select()
+          .select("*")
           .single();
 
-        let finalData = data;
-        if (error) {
-          const shouldRetryWithoutOptionalColumns = OPTIONAL_DEBT_COLUMNS.some((column) =>
-            isMissingDebtColumnError(error, column)
-          );
+        if (error) throw error;
 
-          if (!shouldRetryWithoutOptionalColumns) throw error;
-
-          const { data: fallbackData, error: fallbackError } = await insforge.database
-            .from("debts")
-            .insert([stripOptionalDebtColumns(newPayload)])
-            .select()
-            .single();
-
-          if (fallbackError) throw fallbackError;
-          finalData = fallbackData;
-        }
-
-        if (finalData) {
+        if (data) {
           const added: Debt = {
-            ...finalData,
-            total_amount: Number(finalData.total_amount),
-            remaining_amount: Number(finalData.remaining_amount),
-            minimum_payment: Number(finalData.minimum_payment),
-            installments: finalData.installments ? Number(finalData.installments) : null,
-            start_month: finalData.start_month || null,
+            ...data,
+            total_amount: Number(data.total_amount),
+            remaining_amount: Number(data.remaining_amount),
+            minimum_payment: Number(data.minimum_payment),
+            installments: data.installments ? Number(data.installments) : null,
+            start_month: data.start_month || null,
           };
           setDebts((prev) => [added, ...prev]);
           toast.success(`💳 ${added.title}`, { description: `Total: ${formatCurrency(added.total_amount)}` });
+          broadcastMutation(userId, "INSERT_debt", added);
           return added;
         }
         return null;
@@ -128,39 +100,23 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
           .from("debts")
           .update(payload)
           .eq("id", id)
-          .select()
+          .select("*")
           .single();
 
-        let finalData = data;
-        if (error) {
-          const shouldRetryWithoutOptionalColumns = OPTIONAL_DEBT_COLUMNS.some((column) =>
-            isMissingDebtColumnError(error, column)
-          );
+        if (error) throw error;
 
-          if (!shouldRetryWithoutOptionalColumns) throw error;
-
-          const { data: fallbackData, error: fallbackError } = await insforge.database
-            .from("debts")
-            .update(stripOptionalDebtColumns(payload))
-            .eq("id", id)
-            .select()
-            .single();
-
-          if (fallbackError) throw fallbackError;
-          finalData = fallbackData;
-        }
-
-        if (finalData) {
+        if (data) {
           const updated: Debt = {
-            ...finalData,
-            total_amount: Number(finalData.total_amount),
-            remaining_amount: Number(finalData.remaining_amount),
-            minimum_payment: Number(finalData.minimum_payment),
-            installments: finalData.installments ? Number(finalData.installments) : null,
-            start_month: finalData.start_month || null,
+            ...data,
+            total_amount: Number(data.total_amount),
+            remaining_amount: Number(data.remaining_amount),
+            minimum_payment: Number(data.minimum_payment),
+            installments: data.installments ? Number(data.installments) : null,
+            start_month: data.start_month || null,
           };
           setDebts((prev) => prev.map((d) => (d.id === id ? updated : d)));
           toast.success(`✏️ Deuda actualizada: ${updated.title}`, { description: `Restante: ${formatCurrency(updated.remaining_amount)}` });
+          broadcastMutation(userId, "UPDATE_debt", updated);
           return updated;
         }
         return null;
@@ -184,6 +140,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
 
         setDebts((prev) => prev.filter((d) => d.id !== id));
         toast.success("🗑️ Deuda eliminada");
+        broadcastMutation(userId, "DELETE_debt", { id, title: "Deuda eliminada" });
         return true;
       } catch (err: any) {
         console.error("Error deleting debt:", err);
@@ -256,6 +213,9 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
           );
 
           toast.success(`💰 Abono registrado: ${formatCurrency(amount)}`, { description: `Restante: ${formatCurrency(newRemaining)}` });
+
+          broadcastMutation(userId, "UPDATE_debt", { ...debt, remaining_amount: Number(data.remaining_amount) });
+          broadcastMutation(userId, "INSERT_debt_payment", { debt_id: debtId, amount, balance_after: Number(data.remaining_amount) });
 
           if (onPaymentSuccess) {
             onPaymentSuccess();

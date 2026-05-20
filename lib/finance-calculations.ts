@@ -212,3 +212,20 @@ export function getDtiLevel(dtiRatio: number): DtiLevel {
   if (dtiRatio >= 20) return "warning";
   return "healthy";
 }
+
+export function spentByCategoryInMonth(
+  expenses: Expense[],
+  category: string,
+  month: number,
+  year: number
+): number {
+  return expenses
+    .filter(
+      (e) =>
+        e.category === category &&
+        e.status === "paid" &&
+        getExpenseDateInMonth(e, month, year)
+    )
+    .reduce((acc, e) => acc + e.amount, 0);
+}
+

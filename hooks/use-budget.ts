@@ -6,6 +6,7 @@ import { UserBudget } from "@/types";
 import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
 import { formatCurrency } from "@/lib/utils";
+import { broadcastMutation } from "@/lib/realtime-utils";
 
 export function useBudget(userId: string | undefined) {
   const [budget, setBudget] = useState<UserBudget | null>(null);
@@ -92,6 +93,7 @@ export function useBudget(userId: string | undefined) {
             monthly_savings_goal: Number(data.monthly_savings_goal || 0),
           });
           toast.success("⚙️ Configuración guardada", { description: `Ingreso: ${formatCurrency(income)} · Presupuesto: ${formatCurrency(monthlyBudget)}` });
+          broadcastMutation(userId, "UPDATE_budget", data);
           return true;
         }
         return false;

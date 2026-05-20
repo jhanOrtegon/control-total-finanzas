@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface PlanModalProps {
   isOpen: boolean;
@@ -41,13 +42,14 @@ export function PlanModal({
 }: PlanModalProps) {
   const [type, setType] = useState<"income" | "expense" | "debt">("expense");
   const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<number | "">("");
   const [category, setCategory] = useState("Otros");
   const [selectedDebtId, setSelectedDebtId] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const val = parseFloat(amount);
+    if (amount === "") return;
+    const val = amount as number;
     if (isNaN(val) || val <= 0) {
       toast.error("Por favor, ingresa un monto válido.");
       return;
@@ -206,15 +208,12 @@ export function PlanModal({
             <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1.5">
               Monto / Valor ($)
             </label>
-            <input
-              type="number"
-              step="any"
+            <CurrencyInput
               placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              onFocus={handleAmountFocus}
+              value={amount === "" ? undefined : amount}
+              onChange={(val) => setAmount(val)}
               required
-              className={`w-full border rounded-xl py-2 px-3 text-xs font-semibold focus:outline-none transition ${
+              className={`w-full border rounded-xl py-2 focus:outline-none transition ${
                 theme === "dark"
                   ? "bg-slate-950/80 border-slate-800 text-white focus:border-slate-400"
                   : "bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-450"

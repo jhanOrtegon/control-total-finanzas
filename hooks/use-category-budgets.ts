@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useGlobalLoading } from "@/providers/loading-provider";
 import { suggestEnvelopeLimits, SPEND_CATEGORIES } from "@/lib/envelope-calculations";
 import { formatCurrency } from "@/lib/utils";
+import { broadcastMutation } from "@/lib/realtime-utils";
 
 function mapCategoryBudget(row: Record<string, unknown>): CategoryBudget {
   return {
@@ -67,6 +68,7 @@ export function useCategoryBudgets(userId: string | undefined) {
             setCategoryBudgets((prev) =>
               prev.map((c) => (c.id === existing.id ? updated : c)),
             );
+            broadcastMutation(userId, "UPDATE_category_budget", updated);
           }
         } else {
           const { data, error } = await insforge.database
@@ -82,10 +84,12 @@ export function useCategoryBudgets(userId: string | undefined) {
             .single();
           if (error) throw error;
           if (data) {
+            const mapped = mapCategoryBudget(data as Record<string, unknown>);
             setCategoryBudgets((prev) => [
               ...prev,
-              mapCategoryBudget(data as Record<string, unknown>),
+              mapped,
             ]);
+            broadcastMutation(userId, "INSERT_category_budget", mapped);
           }
         }
         toast.success(`📁 Límite actualizado: ${category}`, { description: formatCurrency(monthlyLimit) });
@@ -130,6 +134,7 @@ export function useCategoryBudgets(userId: string | undefined) {
               setCategoryBudgets((prev) =>
                 prev.map((c) => (c.id === existing.id ? updated : c)),
               );
+              broadcastMutation(userId, "UPDATE_category_budget", updated);
             }
           } else if (monthlyLimit > 0) {
             const { data, error } = await insforge.database
@@ -141,13 +146,17 @@ export function useCategoryBudgets(userId: string | undefined) {
               .single();
             if (error) throw error;
             if (data) {
+              const mapped = mapCategoryBudget(data as Record<string, unknown>);
               setCategoryBudgets((prev) => [
                 ...prev,
-                mapCategoryBudget(data as Record<string, unknown>),
+                mapped,
               ]);
+              broadcastMutation(userId, "INSERT_category_budget", mapped);
             }
           }
         }
+        // fetchCategoryBudgets handles setting the final state, 
+        // but we broadcasted individually so remote gets it instantly too
         await fetchCategoryBudgets();
         toast.success("📁 Todos los sobres guardados");
         return true;

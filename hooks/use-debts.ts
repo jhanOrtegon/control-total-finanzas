@@ -13,6 +13,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(false);
   const { withLoading } = useGlobalLoading();
+  const currentYearMonth = new Date().toISOString().slice(0, 7);
 
   const fetchDebts = useCallback(async () => {
     if (!userId) return;
@@ -33,8 +34,8 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
             total_amount: Number(d.total_amount),
             remaining_amount: Number(d.remaining_amount),
             minimum_payment: Number(d.minimum_payment || 0),
-            installments: d.installments ? Number(d.installments) : null,
-            start_month: d.start_month || null,
+            installments: d.installments ? Number(d.installments) : 1,
+            start_month: d.start_month || currentYearMonth,
           }))
         );
       }
@@ -57,8 +58,11 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
           remaining_amount: payload.remaining_amount,
           minimum_payment: payload.minimum_payment,
           due_date: payload.due_date || null,
-          installments: payload.installments || null,
-          start_month: payload.start_month || null,
+          installments:
+            payload.installments && payload.installments > 0
+              ? payload.installments
+              : 1,
+          start_month: payload.start_month || currentYearMonth,
         };
 
         const { data, error } = await insforge.database
@@ -75,8 +79,8 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
             total_amount: Number(data.total_amount),
             remaining_amount: Number(data.remaining_amount),
             minimum_payment: Number(data.minimum_payment),
-            installments: data.installments ? Number(data.installments) : null,
-            start_month: data.start_month || null,
+            installments: data.installments ? Number(data.installments) : 1,
+            start_month: data.start_month || currentYearMonth,
           };
           setDebts((prev) => [added, ...prev]);
           toast.success(`💳 ${added.title}`, { description: `Total: ${formatCurrency(added.total_amount)}` });
@@ -96,9 +100,18 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     if (!userId) return null;
     return withLoading(async () => {
       try {
+        const normalizedPayload = {
+          ...payload,
+          installments:
+            payload.installments && payload.installments > 0
+              ? payload.installments
+              : 1,
+          start_month: payload.start_month || currentYearMonth,
+        };
+
         const { data, error } = await insforge.database
           .from("debts")
-          .update(payload)
+          .update(normalizedPayload)
           .eq("id", id)
           .select("*")
           .single();
@@ -111,8 +124,8 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
             total_amount: Number(data.total_amount),
             remaining_amount: Number(data.remaining_amount),
             minimum_payment: Number(data.minimum_payment),
-            installments: data.installments ? Number(data.installments) : null,
-            start_month: data.start_month || null,
+            installments: data.installments ? Number(data.installments) : 1,
+            start_month: data.start_month || currentYearMonth,
           };
           setDebts((prev) => prev.map((d) => (d.id === id ? updated : d)));
           toast.success(`✏️ Deuda actualizada: ${updated.title}`, { description: `Restante: ${formatCurrency(updated.remaining_amount)}` });
@@ -231,6 +244,131 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     }, "Procesando abono a deuda...");
   };
 
+  const undoDebtPayment = async (paymentId: string) => {
+    if (!userId) return false;
+    return withLoading(async () => {
+      try {
+        const { data: paymentData, error: paymentError } = await insforge.database
+          .from("debt_payments")
+          .select("id, debt_id, amount, expense_id")
+          .eq("id", paymentId)
+          .eq("user_id", userId)
+          .single();
+
+        if (paymentError || !paymentData) {
+          throw paymentError ?? new Error("No se encontró el abono a revertir");
+        }
+
+        const paymentDebtId = String(paymentData.debt_id);
+        const paymentAmount = Number(paymentData.amount);
+        const paymentExpenseId = paymentData.expense_id
+          ? String(paymentData.expense_id)
+          : null;
+
+        const debtInState = debts.find((d) => d.id === paymentDebtId);
+
+        let currentRemaining = debtInState?.remaining_amount;
+        let debtTotal = debtInState?.total_amount;
+        let debtTitle = debtInState?.title;
+
+        if (
+          currentRemaining === undefined ||
+          debtTotal === undefined ||
+          debtTitle === undefined
+        ) {
+          const { data: debtRow, error: debtErr } = await insforge.database
+            .from("debts")
+            .select("id, title, remaining_amount, total_amount")
+            .eq("id", paymentDebtId)
+            .eq("user_id", userId)
+            .single();
+
+          if (debtErr || !debtRow) {
+            throw debtErr ?? new Error("No se encontró la deuda asociada");
+          }
+
+          currentRemaining = Number(debtRow.remaining_amount);
+          debtTotal = Number(debtRow.total_amount);
+          debtTitle = String(debtRow.title);
+        }
+
+        const newRemaining = Math.min(debtTotal, currentRemaining + paymentAmount);
+
+        const { data: updatedDebtRow, error: updateDebtError } = await insforge.database
+          .from("debts")
+          .update({ remaining_amount: newRemaining })
+          .eq("id", paymentDebtId)
+          .eq("user_id", userId)
+          .select("id, title, total_amount, remaining_amount, minimum_payment, due_date, installments, start_month, created_at, user_id")
+          .single();
+
+        if (updateDebtError || !updatedDebtRow) {
+          throw updateDebtError ?? new Error("No se pudo actualizar la deuda");
+        }
+
+        const { error: deletePaymentError } = await insforge.database
+          .from("debt_payments")
+          .delete()
+          .eq("id", paymentId)
+          .eq("user_id", userId);
+
+        if (deletePaymentError) {
+          throw deletePaymentError;
+        }
+
+        if (paymentExpenseId) {
+          const { error: deleteExpenseError } = await insforge.database
+            .from("expenses")
+            .delete()
+            .eq("id", paymentExpenseId)
+            .eq("user_id", userId);
+
+          if (deleteExpenseError) {
+            console.warn("No se pudo eliminar el gasto asociado al abono:", deleteExpenseError);
+          }
+        }
+
+        const updatedDebt: Debt = {
+          id: String(updatedDebtRow.id),
+          user_id: String(updatedDebtRow.user_id),
+          title: String(updatedDebtRow.title),
+          total_amount: Number(updatedDebtRow.total_amount),
+          remaining_amount: Number(updatedDebtRow.remaining_amount),
+          minimum_payment: Number(updatedDebtRow.minimum_payment || 0),
+          due_date: updatedDebtRow.due_date ? String(updatedDebtRow.due_date) : null,
+          installments: updatedDebtRow.installments
+            ? Number(updatedDebtRow.installments)
+            : null,
+          start_month: updatedDebtRow.start_month
+            ? String(updatedDebtRow.start_month)
+            : null,
+          created_at: String(updatedDebtRow.created_at),
+        };
+
+        setDebts((prev) =>
+          prev.map((d) => (d.id === paymentDebtId ? updatedDebt : d))
+        );
+
+        toast.success(`↩️ Abono revertido en ${debtTitle}`, {
+          description: `Saldo actualizado: ${formatCurrency(newRemaining)}`,
+        });
+
+        broadcastMutation(userId, "UPDATE_debt", updatedDebt);
+        broadcastMutation(userId, "DELETE_debt_payment", {
+          id: paymentId,
+          debt_id: paymentDebtId,
+          title: `Reversa: ${debtTitle}`,
+        });
+
+        return true;
+      } catch (err: any) {
+        console.error("Error undoing debt payment:", err);
+        toast.error("Error al deshacer el abono");
+        return false;
+      }
+    }, "Revirtiendo abono de deuda...");
+  };
+
   useEffect(() => {
     fetchDebts();
   }, [fetchDebts]);
@@ -244,8 +382,8 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
           total_amount: Number(data.total_amount),
           remaining_amount: Number(data.remaining_amount),
           minimum_payment: Number(data.minimum_payment || 0),
-          installments: data.installments ? Number(data.installments) : null,
-          start_month: data.start_month || null,
+          installments: data.installments ? Number(data.installments) : 1,
+          start_month: data.start_month || currentYearMonth,
         };
         if (op === "INSERT") {
           if (prev.some((d) => d.id === data.id)) return prev;
@@ -254,7 +392,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
         return prev.map((d) => (d.id === data.id ? mapped : d));
       });
     },
-    [],
+    [currentYearMonth],
   );
 
   return {
@@ -264,6 +402,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     updateDebt,
     deleteDebt,
     recordDebtPayment,
+    undoDebtPayment,
     refetchDebts: fetchDebts,
     applyRealtimeDebt,
   };

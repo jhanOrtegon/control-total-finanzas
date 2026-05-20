@@ -11,6 +11,7 @@ import { MonthCloseWizard } from "@/components/month-close/month-close-wizard";
 import { Pagination } from "@/components/shared/pagination";
 import { useConfirm } from "@/providers/confirm-provider";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import type { Debt } from "@/types";
 import {
   Calendar,
   CheckCircle,
@@ -84,10 +85,71 @@ function percentToHeightClass(percent: number) {
   return HEIGHT_CLASSES[nearestIndex];
 }
 
+function parseDateToYearMonth(
+  value: string | null,
+): { year: number; month: number } | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return null;
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+}
+
+function parseYearMonth(
+  value: string | null,
+): { year: number; month: number } | null {
+  if (!value) return null;
+  const match = value.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function monthIndex(year: number, month: number) {
+  return year * 12 + (month - 1);
+}
+
+function isDebtApplicableToMonth(
+  debt: Debt,
+  targetMonth: number,
+  targetYear: number,
+) {
+  if (debt.remaining_amount <= 0) return false;
+
+  const start =
+    parseYearMonth(debt.start_month) ||
+    parseDateToYearMonth(debt.due_date) ||
+    parseDateToYearMonth(debt.created_at);
+  const targetIdx = monthIndex(targetYear, targetMonth);
+
+  if (!start) return false;
+
+  const startIdx = monthIndex(start.year, start.month);
+  if (targetIdx < startIdx) return false;
+
+  const installments =
+    debt.installments && debt.installments > 0 ? debt.installments : 1;
+  const endIdx = startIdx + installments - 1;
+  return targetIdx <= endIdx;
+}
+
 export default function SchedulePage() {
   const { theme } = useTheme();
-  const { expenses, addExpense, deleteExpense, updateExpense, debts, recordDebtPayment, budget } =
-    useFinance();
+  const {
+    expenses,
+    debtPayments,
+    addExpense,
+    deleteExpense,
+    updateExpense,
+    debts,
+    recordDebtPayment,
+    undoDebtPayment,
+    budget,
+  } = useFinance();
 
   // States
   const [selectedYear, setSelectedYear] = useState<number>(
@@ -149,12 +211,8 @@ export default function SchedulePage() {
     );
 
     // 4. Debt minimum payments
-    const activeDebts = debts.filter((d) => d.remaining_amount > 0);
-    const debtPayments = expenses.filter(
-      (e) =>
-        e.status === "paid" &&
-        isDateInMonth(e.paid_date || e.due_date, monthNum, selectedYear) &&
-        e.title.toLowerCase().startsWith("abono a deuda:"),
+    const activeDebts = debts.filter((d) =>
+      isDebtApplicableToMonth(d, monthNum, selectedYear),
     );
 
     // Mappings
@@ -179,10 +237,16 @@ export default function SchedulePage() {
     }));
 
     const debtObligations = activeDebts.map((d) => {
-      const log = debtPayments.find((p) =>
-        p.title.toLowerCase().includes(d.title.toLowerCase()),
+      const monthDebtPayments = debtPayments.filter(
+        (p) =>
+          p.debt_id === d.id &&
+          isDateInMonth(p.paid_at, monthNum, selectedYear),
       );
-      const amountPaid = log ? log.amount : 0;
+      const amountPaid = monthDebtPayments.reduce(
+        (acc, p) => acc + p.amount,
+        0,
+      );
+      const latestPayment = monthDebtPayments[0] ?? null;
       return {
         id: d.id,
         title: `Pago Mínimo: ${d.title}`,
@@ -192,6 +256,7 @@ export default function SchedulePage() {
         isPaid: amountPaid >= d.minimum_payment,
         amountPaid,
         debtId: d.id,
+        latestPaymentId: latestPayment?.id ?? null,
       };
     });
 
@@ -247,6 +312,8 @@ export default function SchedulePage() {
 
   const maxYearlyDue = Math.max(...yearlyChartData.map((d) => d.totalDue), 100);
   const selectedStats = getMonthlyStats(selectedMonth);
+  const incomeMinusPending =
+    selectedStats.totalIncome - selectedStats.totalPending;
   const filteredObligations = useMemo(
     () =>
       selectedStats.allObligations.filter((ob) =>
@@ -333,6 +400,29 @@ export default function SchedulePage() {
       setPayingDebtId(null);
       setPaymentAmount("");
     }
+  };
+
+  const handleUndoDebtPaid = async (ob: {
+    title: string;
+    debtId: string;
+    latestPaymentId: string | null;
+  }) => {
+    if (!ob.latestPaymentId) {
+      toast.error("No se encontró un abono para revertir en este mes.");
+      return;
+    }
+
+    const ok = await confirm({
+      title: "Marcar deuda como pendiente",
+      description:
+        "Se revertirá el último abono de este mes para esta deuda y volverá a quedar pendiente.",
+      confirmLabel: "Sí, revertir abono",
+      variant: "danger",
+    });
+
+    if (!ok) return;
+
+    await undoDebtPayment(ob.latestPaymentId);
   };
 
   return (
@@ -501,7 +591,7 @@ export default function SchedulePage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-850 pt-4 text-xs font-semibold">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 dark:border-slate-850 pt-4 text-xs font-semibold">
             <div>
               <span className="block text-[9px] uppercase font-bold text-slate-450 tracking-wider">
                 Flujo de Ingresos
@@ -512,12 +602,22 @@ export default function SchedulePage() {
             </div>
             <div>
               <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-wider">
-                Caja Faltante
+                Total Deudas
               </span>
               <span
                 className={`text-sm font-black ${selectedStats.totalPending > 0 ? "text-rose-500" : "text-slate-400"}`}
               >
                 {formatCurrency(selectedStats.totalPending)}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-wider">
+                Disponible
+              </span>
+              <span
+                className={`text-sm font-black ${incomeMinusPending >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+              >
+                {formatCurrency(incomeMinusPending)}
               </span>
             </div>
           </div>
@@ -534,7 +634,8 @@ export default function SchedulePage() {
           <div>
             <h3 className="text-sm font-black mb-1">Carga Mensual Estimada</h3>
             <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
-              Vista mensual de carga y pagado. Haz clic en una barra para planificar.
+              Vista mensual de carga y pagado. Haz clic en una barra para
+              planificar.
             </p>
           </div>
 
@@ -676,7 +777,12 @@ export default function SchedulePage() {
               >
                 Pagados
                 <span className="ml-1.5 opacity-80">
-                  ({selectedStats.allObligations.filter((ob) => ob.isPaid).length})
+                  (
+                  {
+                    selectedStats.allObligations.filter((ob) => ob.isPaid)
+                      .length
+                  }
+                  )
                 </span>
               </button>
             </div>
@@ -794,17 +900,26 @@ export default function SchedulePage() {
 
                     <div className="flex items-center gap-2">
                       {"isDebt" in ob && ob.isDebt ? (
-                        <button
-                          onClick={() => {
-                            setPayingDebtId(ob.debtId);
-                            setPaymentAmount(ob.amount);
-                          }}
-                          disabled={ob.isPaid}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                          <Coins className="w-3.5 h-3.5" />
-                          <span>{ob.isPaid ? "Saldado" : "Abonar"}</span>
-                        </button>
+                        ob.isPaid ? (
+                          <button
+                            onClick={() => handleUndoDebtPaid(ob)}
+                            className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Marcar Pendiente</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setPayingDebtId(ob.debtId);
+                              setPaymentAmount(ob.amount);
+                            }}
+                            className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white"
+                          >
+                            <Coins className="w-3.5 h-3.5" />
+                            <span>Abonar</span>
+                          </button>
+                        )
                       ) : "isRecurrentTemplate" in ob ? (
                         <button
                           onClick={() => handleToggleRecurrent(ob)}

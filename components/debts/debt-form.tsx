@@ -23,7 +23,7 @@ interface DebtFormProps {
     remaining_amount: number;
     minimum_payment: number;
     due_date: string | null;
-    installments: number | null;
+    installments: number;
     start_month: string | null;
   }) => Promise<void>;
   onCancelEdit: () => void;
@@ -51,8 +51,8 @@ export function DebtForm({
   const [remainingAmount, setRemainingAmount] = useState<number | "">("");
   const [minimumPayment, setMinimumPayment] = useState<number | "">("");
   const [dueDate, setDueDate] = useState("");
-  const [installments, setInstallments] = useState("");
-  const [startMonth, setStartMonth] = useState("");
+  const [installments, setInstallments] = useState("1");
+  const [startMonth, setStartMonth] = useState(getCurrentMonthValue());
   const [autoCalculate, setAutoCalculate] = useState(false);
 
   const currentMonthValue = getCurrentMonthValue();
@@ -79,13 +79,13 @@ export function DebtForm({
       setRemainingAmount(editingDebt.remaining_amount);
       setMinimumPayment(editingDebt.minimum_payment);
       setDueDate(editingDebt.due_date || "");
-      setInstallments(editingDebt.installments?.toString() || "");
-      setStartMonth(editingDebt.start_month || "");
+      setInstallments(editingDebt.installments?.toString() || "1");
+      setStartMonth(editingDebt.start_month || currentMonthValue);
       setAutoCalculate(false);
     } else {
       resetForm();
     }
-  }, [editingDebt]);
+  }, [editingDebt, currentMonthValue]);
 
   // Auto-calculate minimum payment when installments change
   useEffect(() => {
@@ -110,8 +110,8 @@ export function DebtForm({
     setRemainingAmount("");
     setMinimumPayment("");
     setDueDate("");
-    setInstallments("");
-    setStartMonth("");
+    setInstallments("1");
+    setStartMonth(currentMonthValue);
     setAutoCalculate(false);
   };
 
@@ -128,6 +128,7 @@ export function DebtForm({
     const total = totalAmount as number;
     const remaining = remainingAmount as number;
     const minimum = (minimumPayment as number) || 0;
+    const normalizedInstallments = Math.max(1, parseInt(installments || "1"));
 
     if (isNaN(total) || total <= 0 || isNaN(remaining) || remaining < 0) return;
     if (remaining > total) return;
@@ -142,8 +143,8 @@ export function DebtForm({
       remaining_amount: remaining,
       minimum_payment: minimum,
       due_date: dueDate || null,
-      installments: installments ? parseInt(installments) : null,
-      start_month: startMonth || null,
+      installments: normalizedInstallments,
+      start_month: startMonth || currentMonthValue,
     });
 
     if (!editingDebt) {
@@ -219,16 +220,22 @@ export function DebtForm({
         {/* Installments */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-            Número de Cuotas (Opcional)
+            Número de Cuotas
           </label>
           <div className="flex items-center gap-2">
             <input
               type="number"
               min="1"
               step="1"
+              required
               placeholder="Ej. 12, 24, 36..."
               value={installments}
               onChange={(e) => handleInstallmentsChange(e.target.value)}
+              onBlur={() => {
+                if (!installments || Number(installments) <= 0) {
+                  setInstallments("1");
+                }
+              }}
               onFocus={(e) => e.target.select()}
               className={inputClass}
             />

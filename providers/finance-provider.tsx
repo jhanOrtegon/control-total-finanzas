@@ -71,6 +71,7 @@ interface FinanceContextType {
   updateDebt: ReturnType<typeof useDebts>["updateDebt"];
   deleteDebt: ReturnType<typeof useDebts>["deleteDebt"];
   recordDebtPayment: ReturnType<typeof useDebts>["recordDebtPayment"];
+  undoDebtPayment: ReturnType<typeof useDebts>["undoDebtPayment"];
   closeMonth: ReturnType<typeof useMonthlySnapshots>["closeMonth"];
   getSnapshot: ReturnType<typeof useMonthlySnapshots>["getSnapshot"];
   upsertCategoryLimit: ReturnType<typeof useCategoryBudgets>["upsertCategoryLimit"];
@@ -114,6 +115,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     updateDebt: updateDebtRaw,
     deleteDebt: deleteDebtRaw,
     recordDebtPayment: recordDebtPaymentRaw,
+    undoDebtPayment: undoDebtPaymentRaw,
     refetchDebts,
     applyRealtimeDebt,
   } = useDebts(userId);
@@ -270,6 +272,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [recordDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync],
   );
 
+  const undoDebtPayment = useCallback(
+    async (paymentId: string) => {
+      const ok = await undoDebtPaymentRaw(paymentId);
+      if (ok) {
+        await Promise.all([refetchExpenses(), refetchPayments()]);
+        touchSync();
+      }
+      return ok;
+    },
+    [undoDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync],
+  );
+
   const updateBudgetWrapped = useCallback(
     async (income: number, monthlyBudget: number, savingsGoal: number) => {
       const ok = await updateBudget(income, monthlyBudget, savingsGoal);
@@ -391,6 +405,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       updateDebt,
       deleteDebt,
       recordDebtPayment,
+      undoDebtPayment,
       closeMonth: closeMonthWrapped,
       getSnapshot,
       upsertCategoryLimit: upsertCategoryLimitWrapped,
@@ -427,6 +442,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       updateDebt,
       deleteDebt,
       recordDebtPayment,
+      undoDebtPayment,
       closeMonthWrapped,
       getSnapshot,
       upsertCategoryLimitWrapped,

@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS debts (
   remaining_amount NUMERIC(12, 2) NOT NULL,
   minimum_payment NUMERIC(12, 2) DEFAULT 0.00,
   due_date DATE,
-  installments INTEGER,
+  installments INTEGER NOT NULL DEFAULT 1,
   start_month VARCHAR(7),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -47,3 +47,6 @@ CREATE INDEX IF NOT EXISTS idx_debts_user_id ON debts(user_id);
 -- Add new columns to existing debts table (migration)
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS installments INTEGER;
 ALTER TABLE debts ADD COLUMN IF NOT EXISTS start_month VARCHAR(7);
+UPDATE debts SET installments = 1 WHERE installments IS NULL OR installments <= 0;
+ALTER TABLE debts ALTER COLUMN installments SET DEFAULT 1;
+ALTER TABLE debts ALTER COLUMN installments SET NOT NULL;

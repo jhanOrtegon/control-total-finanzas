@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useAuth } from "@/providers/auth-provider";
@@ -44,12 +44,13 @@ export default function DashboardLayout({
         <div className="flex-1 flex flex-col min-w-0 relative z-10">
           <Header />
 
-          <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8 space-y-8 overflow-y-auto">
+          {/* Extra bottom padding on mobile to avoid overlap with bottom tab bar */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8 space-y-8 overflow-y-auto pb-24 md:pb-8">
             {children}
           </main>
 
           <footer
-            className={`border-t py-8 text-center text-slate-500 text-xs mt-12 relative z-10 ${
+            className={`border-t py-8 text-center text-slate-500 text-xs mt-12 relative z-10 mb-16 md:mb-0 ${
               theme === "dark"
                 ? "bg-slate-950/80 border-slate-900"
                 : "bg-white border-slate-200 shadow-inner"
@@ -61,6 +62,7 @@ export default function DashboardLayout({
             </p>
           </footer>
         </div>
+
         <NovaChatbot />
       </div>
         </FinancePeriodProvider>

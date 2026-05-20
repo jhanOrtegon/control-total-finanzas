@@ -206,6 +206,7 @@ export function NovaChatbot() {
     <>
       {/* Floating Action Button */}
       <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isOpen ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100"}`}>
+        <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[1.25rem] blur-md opacity-60 animate-pulse pointer-events-none" />
         <button
           onClick={() => {
             setIsOpen(true);
@@ -213,7 +214,7 @@ export function NovaChatbot() {
           }}
           title="Abrir Nova"
           aria-label="Abrir asistente Nova"
-          className="group relative flex items-center justify-center w-14 h-14 rounded-2xl bg-slate-900 text-white border border-slate-700 shadow-xl shadow-black/30 hover:scale-105 hover:bg-slate-800 transition-all duration-300 cursor-pointer"
+          className="group relative flex items-center justify-center w-14 h-14 rounded-2xl bg-black border border-white/10 text-white shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer"
         >
           <div className="absolute inset-0 bg-white/10 rounded-2xl blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <span

@@ -1,21 +1,52 @@
 {
   "name": "Control Total Finanzas",
   "short_name": "CT Finanzas",
-  "description": "Aplicación de control total de finanzas",
+  "description": "Controla tus gastos, deudas y presupuesto mensual en un solo lugar. Libertad financiera paso a paso.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "background_color": "#0b0e1a",
   "theme_color": "#4f46e5",
+  "categories": ["finance", "productivity"],
+  "lang": "es",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Registrar gasto",
+      "short_name": "Gasto",
+      "description": "Ir directamente a registrar un gasto",
+      "url": "/expenses",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mis Deudas",
+      "short_name": "Deudas",
+      "description": "Ver y gestionar mis deudas activas",
+      "url": "/debts",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cronograma de Pagos",
+      "short_name": "Pagos",
+      "description": "Ver el cronograma mensual de pagos",
+      "url": "/schedule",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
     }
   ]
 }

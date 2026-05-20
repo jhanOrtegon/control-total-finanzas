@@ -16,6 +16,7 @@ import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3,
 import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 
 const ITEMS_PER_PAGE = 6;
+const QUICK_AMOUNTS = [5_000, 10_000, 20_000, 50_000, 100_000, 200_000];
 
 export default function ExpensesPage() {
   const { expenses, addExpense, updateExpense, deleteExpense } = useFinance();
@@ -32,6 +33,7 @@ export default function ExpensesPage() {
   const [txAmount, setTxAmount] = useState<number | "">("");
   const [txCategory, setTxCategory] = useState("Comida");
   const [txMarkAsPaid, setTxMarkAsPaid] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
   const today = new Date();
   const currentMonth = today.getMonth() + 1;
@@ -125,6 +127,13 @@ export default function ExpensesPage() {
     return date.getFullYear() === currentYear && date.getMonth() + 1 === currentMonth;
   });
 
+  // Filtered month transactions
+  const filteredMonthTransactions = useMemo(() => {
+    if (!categoryFilter) return currentMonthTransactions;
+    if (categoryFilter === "Ingresos") return currentMonthTransactions.filter((e) => e.category === "Ingresos");
+    return currentMonthTransactions.filter((e) => e.category === categoryFilter);
+  }, [currentMonthTransactions, categoryFilter]);
+
   // Pagination
   const recurringTotalPages = Math.ceil(recurrentTemplates.length / ITEMS_PER_PAGE);
   const paginatedRecurrent = useMemo(() => {
@@ -132,11 +141,11 @@ export default function ExpensesPage() {
     return recurrentTemplates.slice(start, start + ITEMS_PER_PAGE);
   }, [recurrentTemplates, recurringPage]);
 
-  const historyTotalPages = Math.ceil(currentMonthTransactions.length / ITEMS_PER_PAGE);
+  const historyTotalPages = Math.ceil(filteredMonthTransactions.length / ITEMS_PER_PAGE);
   const paginatedHistory = useMemo(() => {
     const start = (historyPage - 1) * ITEMS_PER_PAGE;
-    return currentMonthTransactions.slice(start, start + ITEMS_PER_PAGE);
-  }, [currentMonthTransactions, historyPage]);
+    return filteredMonthTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredMonthTransactions, historyPage]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -173,9 +182,40 @@ export default function ExpensesPage() {
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
             <span>{activeTab === "recurring" ? "Lista de Recurrencias" : `Historial del Mes (${today.toLocaleString("es-CO", { month: "long" })})`}</span>
             <span className="text-xs bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-indigo-500 px-2 py-0.5 rounded-full font-black">
-              {activeTab === "recurring" ? recurrentTemplates.length : currentMonthTransactions.length}
+              {activeTab === "recurring" ? recurrentTemplates.length : filteredMonthTransactions.length}
             </span>
           </h2>
+
+          {/* Category filter chips — only in month tab */}
+          {activeTab === "month" && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => { setCategoryFilter(null); setHistoryPage(1); }}
+                className={`px-3 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ${
+                  categoryFilter === null
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300"
+                }`}
+              >
+                Todos
+              </button>
+              {CATEGORIES_LIST.map((c) => (
+                <button
+                  key={c.name}
+                  type="button"
+                  onClick={() => { setCategoryFilter(c.name); setHistoryPage(1); }}
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ${
+                    categoryFilter === c.name
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                      : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300"
+                  }`}
+                >
+                  {c.emoji} {c.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {activeTab === "recurring" && recurrentTemplates.length === 0 ? (
             <div className="border border-dashed rounded-3xl p-12 text-center bg-white dark:bg-slate-900/20 border-slate-200 dark:border-slate-800">
@@ -343,8 +383,25 @@ export default function ExpensesPage() {
                     onChange={(val) => setTxAmount(val)}
                     placeholder="Monto"
                     title="Monto del movimiento"
-                    className="w-full border rounded-xl py-2.5 bg-slate-50 border-slate-200 text-sm font-semibold"
+                    className="w-full border rounded-xl py-2.5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-sm font-semibold focus:outline-none focus:border-indigo-400 transition"
                   />
+                  {/* Quick amount chips */}
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {QUICK_AMOUNTS.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setTxAmount(q)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer ${
+                          txAmount === q
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                            : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600"
+                        }`}
+                      >
+                        ${(q / 1000).toFixed(0)}K
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {txType === "expense" && (

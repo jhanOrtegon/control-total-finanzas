@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { TodayUrgentPanel } from "@/components/schedule/today-urgent-panel";
 
 const MONTHS = [
   { name: "Ene", fullName: "Enero" },
@@ -435,6 +436,13 @@ export default function SchedulePage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      {/* Urgent Today Panel — current month only */}
+      <TodayUrgentPanel
+        selectedMonth={selectedMonth}
+        selectedYear={selectedYear}
+        obligations={selectedStats.allObligations}
+      />
+
       {/* Month Selector Card */}
       <div
         className={`p-4 border rounded-3xl shadow-md ${

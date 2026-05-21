@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFinance } from "@/providers/finance-provider";
-import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense } from "@/lib/finance-calculations";
+import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense, getUserProfileConfig, getYearlyIncome } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
@@ -192,6 +192,7 @@ export default function SchedulePage() {
       category: e.category,
       isOneTime: true,
       isPaid: e.status === "paid",
+      dueDate: e.due_date,
     }));
 
     const debtObligations = activeDebts.map((d) => {
@@ -247,8 +248,18 @@ export default function SchedulePage() {
         0,
       );
 
-    const baseIncome = budget?.monthly_income || 0;
-    const primasIncome = (monthNum === 6 || monthNum === 12) ? baseIncome / 2 : 0;
+    const profile = getUserProfileConfig(expenses);
+    const baseIncome = getYearlyIncome(expenses, selectedYear, budget?.monthly_income || 0);
+    
+    let primasIncome = 0;
+    if (
+      (monthNum === 6 || monthNum === 12) &&
+      profile.profileType === "empleado" &&
+      (profile.contractType === "indefinido" || profile.contractType === "fijo")
+    ) {
+      primasIncome = baseIncome / 2;
+    }
+
     const extraIncome = incomeObligations.reduce((a, c) => a + c.amount, 0);
 
     return {
@@ -345,8 +356,11 @@ export default function SchedulePage() {
     }
   };
 
-  const handleToggleOneTime = async (ob: { id: string; isPaid: boolean }) => {
-    await updateExpense(ob.id, { status: ob.isPaid ? "pending" : "paid" });
+  const handleToggleOneTime = async (ob: { id: string; isPaid: boolean; dueDate?: string | null }) => {
+    const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+    const fallbackDate = `${selectedYear}-${pad}-15`;
+    const pd = ob.isPaid ? null : (ob.dueDate || fallbackDate);
+    await updateExpense(ob.id, { status: ob.isPaid ? "pending" : "paid", paid_date: pd });
   };
 
   const handleDelete = async (id: string) => {
@@ -357,6 +371,66 @@ export default function SchedulePage() {
       variant: "danger",
     });
     if (ok) await deleteExpense(id);
+  };
+
+  const handlePayAll = async () => {
+    const pendingObs = selectedStats.allObligations.filter((ob) => !ob.isPaid && !("isIncome" in ob));
+    if (pendingObs.length === 0) return;
+
+    const ok = await confirm({
+      title: "Pagar todo el mes",
+      description: `¿Estás seguro de marcar las ${pendingObs.length} obligaciones pendientes como pagadas?`,
+      confirmLabel: "Sí, pagar todo",
+      variant: "default",
+    });
+
+    if (!ok) return;
+
+    const toastId = toast.loading("Procesando pagos...");
+    
+    for (const ob of pendingObs) {
+      if ("isRecurrentTemplate" in ob) {
+        await handleToggleRecurrent(ob as any);
+      } else if ("isOneTime" in ob) {
+        await handleToggleOneTime(ob as any);
+      } else if ("isDebt" in ob) {
+        await recordDebtPayment(ob.id, ob.amount);
+      }
+    }
+
+    toast.success("Todas las obligaciones han sido pagadas.", { id: toastId });
+  };
+
+  const handleRevertAll = async () => {
+    const paidObs = selectedStats.allObligations.filter((ob) => ob.isPaid && !("isIncome" in ob));
+    if (paidObs.length === 0) return;
+
+    const ok = await confirm({
+      title: "Revertir pagos",
+      description: `¿Estás seguro de deshacer el pago de las ${paidObs.length} obligaciones marcadas como pagadas?`,
+      confirmLabel: "Sí, revertir todo",
+      variant: "danger",
+    });
+
+    if (!ok) return;
+
+    const toastId = toast.loading("Revirtiendo pagos...");
+
+    for (const ob of paidObs) {
+      if ("isRecurrentTemplate" in ob) {
+        await handleToggleRecurrent(ob as any);
+      } else if ("isOneTime" in ob) {
+        await handleToggleOneTime(ob as any);
+      } else if ("isDebt" in ob && "isDeferred" in ob) {
+        if (ob.isDeferred && ob.deferExpenseId) {
+          await undoDeferDebtMonth(ob.id, ob.deferExpenseId);
+        } else if ("latestPaymentId" in ob && ob.latestPaymentId) {
+          await undoDebtPayment(ob.latestPaymentId);
+        }
+      }
+    }
+
+    toast.success("Se han revertido los pagos del mes.", { id: toastId });
   };
 
   const handlePayDebtSubmit = async (e: React.FormEvent) => {
@@ -524,12 +598,9 @@ export default function SchedulePage() {
           <div className="my-7 flex flex-col items-center justify-center">
             {selectedStats.totalDue > 0 ? (
               (() => {
-                const percent = Math.min(
-                  100,
-                  Math.round(
-                    (selectedStats.totalPaid / selectedStats.totalDue) * 100,
-                  ),
-                );
+                const percent = selectedStats.totalPaid >= selectedStats.totalDue 
+                  ? 100 
+                  : Math.floor((selectedStats.totalPaid / selectedStats.totalDue) * 100);
                 const strokeDashoffset = 251.2 - (251.2 * percent) / 100;
                 return (
                   <div className="relative w-40 h-40 lg:w-44 lg:h-44 flex items-center justify-center">
@@ -661,11 +732,11 @@ export default function SchedulePage() {
               const isSelected = selectedMonth === d.monthNum;
               const duePercent =
                 d.totalDue > 0
-                  ? Math.round((d.totalDue / maxYearlyDue) * 100)
+                  ? Math.floor((d.totalDue / maxYearlyDue) * 100)
                   : 0;
               const paidCoveragePercent =
                 d.totalDue > 0
-                  ? Math.min(100, Math.round((d.totalPaid / d.totalDue) * 100))
+                  ? (d.totalPaid >= d.totalDue ? 100 : Math.floor((d.totalPaid / d.totalDue) * 100))
                   : 0;
               const barHeightPercent =
                 d.totalDue > 0 ? Math.max(12, duePercent) : 0;
@@ -805,6 +876,24 @@ export default function SchedulePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {scheduleTab === "pending" && filteredObligations.length > 0 && (
+              <button
+                onClick={handlePayAll}
+                className="hidden sm:flex px-3.5 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-black transition cursor-pointer items-center gap-1.5"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Pagar Todos</span>
+              </button>
+            )}
+            {scheduleTab === "paid" && filteredObligations.length > 0 && (
+              <button
+                onClick={handleRevertAll}
+                className="hidden sm:flex px-3.5 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-black transition cursor-pointer items-center gap-1.5"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Revertir Todos</span>
+              </button>
+            )}
             <button
               onClick={() => setIsPlanOpen(true)}
               className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md transition cursor-pointer flex items-center gap-1.5"

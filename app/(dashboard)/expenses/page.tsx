@@ -10,6 +10,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { Expense } from "@/types";
 import { CATEGORIES_LIST, getCategoryColor, getCategoryEmoji } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
+import { isSystemExpense } from "@/lib/finance-calculations";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { useConfirm } from "@/providers/confirm-provider";
 import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2 } from "lucide-react";
@@ -109,11 +110,11 @@ export default function ExpensesPage() {
 
   // Recurrent templates only (one-time expenses are managed in payment schedule)
   const recurrentTemplates = useMemo(() => {
-    return expenses.filter((e) => e.type === "recurrent");
+    return expenses.filter((e) => e.type === "recurrent" && !isSystemExpense(e));
   }, [expenses]);
 
   const currentMonthTransactions = expenses.filter((e) => {
-    if (e.type !== "one-time") return false;
+    if (e.type !== "one-time" || isSystemExpense(e)) return false;
     const referenceDate = e.status === "paid" ? e.paid_date || e.created_at : e.due_date || e.created_at;
     if (!referenceDate) return false;
 

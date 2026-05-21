@@ -1,5 +1,5 @@
 import type { Debt, DebtPayment, Expense, FinancialEvent } from "@/types";
-import { isDebtPaymentExpense } from "@/lib/finance-calculations";
+import { isDebtPaymentExpense, isSystemExpense } from "@/lib/finance-calculations";
 
 function eventDate(expense: Expense): string {
   return expense.paid_date || expense.due_date || expense.created_at;
@@ -16,7 +16,7 @@ export function buildFinancialEvents(
   );
 
   const fromExpenses: FinancialEvent[] = expenses
-    .filter((e) => !paymentExpenseIds.has(e.id) && e.status === "paid")
+    .filter((e) => !paymentExpenseIds.has(e.id) && e.status === "paid" && !isSystemExpense(e))
     .map((e) => ({
       id: `exp-${e.id}`,
       type: e.category === "Ingresos" ? "income" : "expense",
@@ -124,6 +124,7 @@ export function spentByCategoryInMonth(
     if (
       e.category === "Ingresos" ||
       isDebtPaymentExpense(e) ||
+      isSystemExpense(e) ||
       e.status !== "paid"
     )
       continue;

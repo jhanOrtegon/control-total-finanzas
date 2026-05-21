@@ -87,9 +87,19 @@ export function isDebtApplicableToMonth(
 
   const installments =
     debt.installments && debt.installments > 0 ? debt.installments : 1;
-  const endIdx = startIdx + installments - 1 + applicableDeferrals;
+  const plannedEndIdx = startIdx + installments - 1 + applicableDeferrals;
   
-  return targetIdx <= endIdx;
+  if (targetIdx <= plannedEndIdx) return true;
+
+  const remainingInstallments = debt.minimum_payment > 0 
+    ? Math.ceil(debt.remaining_amount / debt.minimum_payment)
+    : 1;
+    
+  const now = new Date();
+  const currentIdx = monthIndex(now.getFullYear(), now.getMonth() + 1);
+  const extendedEndIdx = Math.max(plannedEndIdx, currentIdx + remainingInstallments - 1);
+  
+  return targetIdx <= extendedEndIdx;
 }
 
 export function getExpenseDateInMonth(expense: Expense, month: number, year: number) {
@@ -109,7 +119,7 @@ export function isDeferDebtExpense(expense: Expense) {
 }
 
 export function isSystemExpense(expense: Expense) {
-  return expense.title.startsWith("CONFIG:");
+  return expense.title.startsWith("CONFIG:") || expense.title.startsWith("LOG:");
 }
 
 export function getUserProfileConfig(expenses: Expense[]) {
@@ -122,10 +132,21 @@ export function getUserProfileConfig(expenses: Expense[]) {
 }
 
 export function getYearlyIncome(expenses: Expense[], year: number, defaultIncome: number) {
-  const salaryExp = expenses.find(e => e.title === `CONFIG:SALARY:${year}`);
-  if (salaryExp && salaryExp.amount > 0) {
-    return salaryExp.amount;
+  const exactMatch = expenses.find(e => e.title === `CONFIG:SALARY:${year}`);
+  if (exactMatch && exactMatch.amount > 0) {
+    return exactMatch.amount;
   }
+  
+  const previousSalaries = expenses
+    .filter(e => e.title.startsWith("CONFIG:SALARY:"))
+    .map(e => ({ year: parseInt(e.title.split(":")[2]), amount: e.amount }))
+    .filter(s => !isNaN(s.year) && s.year < year && s.amount > 0)
+    .sort((a, b) => b.year - a.year);
+    
+  if (previousSalaries.length > 0) {
+    return previousSalaries[0].amount;
+  }
+
   return defaultIncome;
 }
 

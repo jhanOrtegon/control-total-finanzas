@@ -1,5 +1,6 @@
 import type { Debt, Expense, UserBudget, CategoryBudget } from "@/types";
 import type { MonthlyFinanceSummary } from "@/lib/finance-calculations";
+import { getExpenseDateInMonth } from "@/lib/finance-calculations";
 import { spentByCategoryInMonth } from "@/lib/financial-events";
 
 export type AlertSeverity = "critical" | "warning" | "info";
@@ -97,15 +98,33 @@ export function buildDueAlerts(
 
   for (const d of debts) {
     if (d.remaining_amount <= 0) continue;
-    const due = parseDueDate(d.due_date);
-    if (!due) continue;
-    const dueDay = startOfDay(due);
+    const originalDue = parseDueDate(d.due_date);
+    if (!originalDue) continue;
+    
+    const day = originalDue.getDate();
+    
+    const isCoveredThisMonth = expenses.some((e) => {
+      if (e.status !== "paid") return false;
+      const isPayment = e.title.toLowerCase().startsWith(`abono a deuda: ${d.title.toLowerCase()}`);
+      const isDefer = e.title === `DEFER_DEBT:${d.id}` || e.title.startsWith(`DEFER_DEBT:${d.id}::`);
+      if (!isPayment && !isDefer) return false;
+      return getExpenseDateInMonth(e, today.getMonth() + 1, today.getFullYear());
+    });
+
+    let targetDue = new Date(today.getFullYear(), today.getMonth(), day);
+    
+    if (isCoveredThisMonth) {
+      targetDue = new Date(today.getFullYear(), today.getMonth() + 1, day);
+    }
+
+    const dueDay = startOfDay(targetDue);
     if (dueDay > limit) continue;
+
     addDue(
       d.id,
       `Cuota: ${d.title}`,
       d.minimum_payment,
-      due,
+      targetDue,
       "due_soon",
       "/debts",
     );

@@ -23,6 +23,7 @@ import {
   Wallet,
   Bell,
   FileBarChart,
+  Activity,
 } from "lucide-react";
 
 export function Sidebar() {
@@ -60,6 +61,7 @@ export function Sidebar() {
       items: [
         { href: "/history", label: "Historial / Trazabilidad", icon: History },
         { href: "/reports", label: "Informes Detallados", icon: FileBarChart },
+        { href: "/logs", label: "Registro de Actividad", icon: Activity },
       ],
     },
     {

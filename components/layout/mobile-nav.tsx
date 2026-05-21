@@ -18,6 +18,7 @@ import {
   Bell,
   Settings,
   Wallet,
+  Activity,
 } from "lucide-react";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -47,6 +48,7 @@ const navGroups = [
     items: [
       { href: "/history", label: "Historial", icon: History },
       { href: "/reports", label: "Informes", icon: FileBarChart },
+      { href: "/logs", label: "Logs", icon: Activity },
     ],
   },
   {

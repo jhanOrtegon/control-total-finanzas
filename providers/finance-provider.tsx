@@ -19,6 +19,7 @@ import { useRealtime } from "@/hooks/use-realtime";
 import {
   computeMonthlySummary,
   spentByCategoryInMonth,
+  isSystemExpense,
   type MonthlyFinanceSummary,
 } from "@/lib/finance-calculations";
 import { buildFinancialEvents } from "@/lib/financial-events";
@@ -227,11 +228,32 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       return result;
     }) as T;
 
+  const writeSystemLog = useCallback(async (actionType: string, message: string, details?: Record<string, any>) => {
+    try {
+      const detailsStr = details ? `|||${JSON.stringify(details)}` : "";
+      await addExpenseRaw({
+        title: `LOG:${actionType}|||${message}${detailsStr}`,
+        amount: 0,
+        category: "LOG",
+        type: "one-time",
+        status: "paid",
+        due_date: new Date().toISOString().slice(0, 10),
+      });
+    } catch (err) {
+      // ignore
+    }
+  }, [addExpenseRaw]);
+
   // addExpense with budget threshold warning
   const addExpense = useCallback(
     async (payload: Parameters<typeof addExpenseRaw>[0]) => {
       const result = await addExpenseRaw(payload);
       if (result && budget) {
+        if (!isSystemExpense(result)) {
+           const cat = result.category === "Ingresos" ? "ingreso" : result.type === "recurrent" ? "plantilla recurrente" : "gasto";
+           writeSystemLog("CREAR", `Registraste un ${cat} llamado '${result.title}' por ${formatCurrency(result.amount)}`, result);
+        }
+        
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
@@ -254,38 +276,92 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       touchSync();
       return result;
     },
-    [addExpenseRaw, budget, expenses, categoryBudgets, touchSync],
+    [addExpenseRaw, budget, expenses, categoryBudgets, touchSync, writeSystemLog],
   );
 
-  const updateExpense = wrap(updateExpenseRaw);
-  const deleteExpense = wrap(deleteExpenseRaw);
+  const updateExpense = useCallback(async (...args: Parameters<typeof updateExpenseRaw>) => {
+    const id = args[0];
+    const oldExpenseRaw = expenses.find(e => e.id === id);
+    const oldExpense = oldExpenseRaw ? JSON.parse(JSON.stringify(oldExpenseRaw)) : null;
+    const result = await updateExpenseRaw(...args);
+    if (result && !isSystemExpense(result)) {
+      touchSync();
+      const cat = result.category === "Ingresos" ? "ingreso" : result.type === "recurrent" ? "plantilla recurrente" : "gasto";
+      writeSystemLog("ACTUALIZAR", `Editaste el ${cat} '${result.title}'`, { old: oldExpense, new: result });
+    }
+    return result;
+  }, [updateExpenseRaw, expenses, touchSync, writeSystemLog]);
+
+  const deleteExpense = useCallback(async (id: string) => {
+    const expense = expenses.find(e => e.id === id);
+    const result = await deleteExpenseRaw(id);
+    if (result && expense && !isSystemExpense(expense)) {
+      touchSync();
+      const cat = expense.category === "Ingresos" ? "ingreso" : expense.type === "recurrent" ? "plantilla recurrente" : "gasto";
+      writeSystemLog("ELIMINAR", `Eliminaste un ${cat} llamado '${expense.title}' por ${formatCurrency(expense.amount)}`, expense);
+    }
+    return result;
+  }, [deleteExpenseRaw, expenses, touchSync, writeSystemLog]);
+
   const toggleExpenseStatus = wrap(toggleExpenseStatusRaw);
-  const addDebt = wrap(addDebtRaw);
-  const updateDebt = wrap(updateDebtRaw);
-  const deleteDebt = wrap(deleteDebtRaw);
+  
+  const addDebt = useCallback(async (...args: Parameters<typeof addDebtRaw>) => {
+    const result = await addDebtRaw(...args);
+    if (result) {
+      touchSync();
+      writeSystemLog("CREAR", `Registraste una nueva deuda '${result.title}' por ${formatCurrency(result.total_amount)}`, result);
+    }
+    return result;
+  }, [addDebtRaw, touchSync, writeSystemLog]);
+
+  const updateDebt = useCallback(async (id: string, payload: any) => {
+    const oldDebtRaw = debts.find(d => d.id === id);
+    const oldDebt = oldDebtRaw ? JSON.parse(JSON.stringify(oldDebtRaw)) : null;
+    const result = await updateDebtRaw(id, payload);
+    if (result) {
+      touchSync();
+      writeSystemLog("ACTUALIZAR", `Editaste la deuda '${result.title}'`, { old: oldDebt, new: result });
+    }
+    return result;
+  }, [updateDebtRaw, debts, touchSync, writeSystemLog]);
+
+  const deleteDebt = useCallback(async (id: string) => {
+    const debt = debts.find(d => d.id === id);
+    const result = await deleteDebtRaw(id);
+    if (result && debt) {
+      touchSync();
+      writeSystemLog("ELIMINAR", `Eliminaste la deuda '${debt.title}' de tu historial`, debt);
+    }
+    return result;
+  }, [deleteDebtRaw, debts, touchSync, writeSystemLog]);
 
   const recordDebtPayment = useCallback(
     async (debtId: string, amount: number) => {
+      const debt = debts.find(d => d.id === debtId);
       const ok = await recordDebtPaymentRaw(debtId, amount);
-      if (ok) {
+      if (ok && debt) {
         await Promise.all([refetchExpenses(), refetchPayments()]);
         touchSync();
+        writeSystemLog("ABONO", `Realizaste un abono de ${formatCurrency(amount)} a la deuda '${debt.title}'`, { debtId, amount });
       }
       return ok;
     },
-    [recordDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync],
+    [recordDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync, debts, writeSystemLog],
   );
 
   const undoDebtPayment = useCallback(
     async (paymentId: string) => {
+      const payment = debtPayments.find(p => p.id === paymentId);
+      const debt = payment ? debts.find(d => d.id === payment?.debt_id) : null;
       const ok = await undoDebtPaymentRaw(paymentId);
       if (ok) {
         await Promise.all([refetchExpenses(), refetchPayments()]);
         touchSync();
+        writeSystemLog("REVERTIR ABONO", `Anulaste el abono de ${formatCurrency(payment?.amount || 0)} a la deuda '${debt?.title || "desconocida"}'`, { paymentId, amount: payment?.amount });
       }
       return ok;
     },
-    [undoDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync],
+    [undoDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync, debtPayments, debts, writeSystemLog],
   );
 
   const deferDebtMonth = useCallback(

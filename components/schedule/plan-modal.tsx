@@ -45,6 +45,8 @@ export function PlanModal({
   const [amount, setAmount] = useState<number | "">("");
   const [category, setCategory] = useState("Otros");
   const [selectedDebtId, setSelectedDebtId] = useState("");
+  const [markAsPaid, setMarkAsPaid] = useState(false);
+  const [dueDateDay, setDueDateDay] = useState("15");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,7 +63,13 @@ export function PlanModal({
     }
 
     const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
-    const formattedDate = `${selectedYear}-${pad}-15`;
+    const dDay = parseInt(dueDateDay, 10);
+    if (isNaN(dDay) || dDay < 1 || dDay > 31) {
+      toast.error("Por favor, ingresa un día válido (1-31).");
+      return;
+    }
+    const dayPad = dDay < 10 ? `0${dDay}` : dDay;
+    const formattedDate = `${selectedYear}-${pad}-${dayPad}`;
 
     let payload: any = {
       amount: val,
@@ -73,10 +81,14 @@ export function PlanModal({
       payload.title = title;
       payload.category = "Ingresos";
       payload.status = "paid" as const; // default incomes to paid/received
+      payload.paid_date = formattedDate;
     } else if (type === "expense") {
       payload.title = title;
       payload.category = category;
-      payload.status = "pending" as const;
+      payload.status = markAsPaid ? "paid" : "pending";
+      if (markAsPaid) {
+        payload.paid_date = formattedDate;
+      }
     } else {
       // debt type
       const targetDebt = debts.find((d) => d.id === selectedDebtId);
@@ -103,6 +115,8 @@ export function PlanModal({
       setAmount("");
       setCategory("Otros");
       setSelectedDebtId("");
+      setMarkAsPaid(false);
+      setDueDateDay("15");
       onClose();
     }
   };
@@ -116,9 +130,13 @@ export function PlanModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className={`w-full max-w-md rounded-3xl p-6 sm:max-w-md ${
-        theme === "dark" ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200"
-      }`}>
+      <DialogContent
+        className={`w-full max-w-md rounded-3xl p-6 sm:max-w-md ${
+          theme === "dark"
+            ? "bg-slate-900 border-slate-800 text-white"
+            : "bg-white border-slate-200"
+        }`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-black">
             <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
@@ -134,7 +152,8 @@ export function PlanModal({
         {/* Type Selectors */}
         <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-850">
           {(["expense", "income", "debt"] as const).map((t) => {
-            const label = t === "expense" ? "Gasto" : t === "income" ? "Ingreso" : "Deuda";
+            const label =
+              t === "expense" ? "Gasto" : t === "income" ? "Ingreso" : "Deuda";
             const isSelected = type === t;
             return (
               <button
@@ -143,7 +162,9 @@ export function PlanModal({
                 onClick={() => setType(t)}
                 className={`py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition cursor-pointer ${
                   isSelected
-                    ? theme === "dark" ? "bg-white text-slate-950 shadow-sm" : "bg-slate-950 text-white shadow-sm"
+                    ? theme === "dark"
+                      ? "bg-white text-slate-950 shadow-sm"
+                      : "bg-slate-950 text-white shadow-sm"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
                 }`}
               >
@@ -162,7 +183,11 @@ export function PlanModal({
               </label>
               <input
                 type="text"
-                placeholder={type === "income" ? "Ej. Sueldo Extra, Bono..." : "Ej. Compra de Ropa, Arriendo..."}
+                placeholder={
+                  type === "income"
+                    ? "Ej. Sueldo Extra, Bono..."
+                    : "Ej. Compra de Ropa, Arriendo..."
+                }
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
@@ -184,41 +209,68 @@ export function PlanModal({
                   setSelectedDebtId(!value || value === "__none__" ? "" : value)
                 }
               >
-                <SelectTrigger className={`w-full h-10 rounded-xl text-xs font-semibold ${
-                  theme === "dark"
-                    ? "bg-slate-950/80 border-slate-800 text-white"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}>
+                <SelectTrigger
+                  className={`w-full h-10 rounded-xl text-xs font-semibold ${
+                    theme === "dark"
+                      ? "bg-slate-950/80 border-slate-800 text-white"
+                      : "bg-slate-50 border-slate-200 text-slate-900"
+                  }`}
+                >
                   <SelectValue placeholder="Selecciona una deuda..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">-- Selecciona una deuda --</SelectItem>
-                  {debts.filter((d) => d.remaining_amount > 0).map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.title} (Faltan: ${d.remaining_amount.toLocaleString()})
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="__none__">
+                    -- Selecciona una deuda --
+                  </SelectItem>
+                  {debts
+                    .filter((d) => d.remaining_amount > 0)
+                    .map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.title} (Faltan: $
+                        {d.remaining_amount.toLocaleString()})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {/* Amount field */}
-          <div>
-            <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1.5">
-              Monto / Valor ($)
-            </label>
-            <CurrencyInput
-              placeholder="0.00"
-              value={amount === "" ? undefined : amount}
-              onChange={(val) => setAmount(val)}
-              required
-              className={`w-full border rounded-xl py-2 focus:outline-none transition ${
-                theme === "dark"
-                  ? "bg-slate-950/80 border-slate-800 text-white focus:border-slate-400"
-                  : "bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-450"
-              }`}
-            />
+          {/* Amount and Due Date fields */}
+          <div className="flex gap-3">
+            <div className="flex-[2]">
+              <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                Monto / Valor ($)
+              </label>
+              <CurrencyInput
+                placeholder="0.00"
+                value={amount === "" ? undefined : amount}
+                onChange={(val) => setAmount(val)}
+                required
+                className={`w-full border rounded-xl py-2 focus:outline-none transition ${
+                  theme === "dark"
+                    ? "bg-slate-950/80 border-slate-800 text-white focus:border-slate-400"
+                    : "bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-450"
+                }`}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                Dia de vencimiento
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={dueDateDay}
+                onChange={(e) => setDueDateDay(e.target.value)}
+                required
+                className={`w-full border rounded-xl py-[7px] px-3 text-xs font-semibold focus:outline-none transition ${
+                  theme === "dark"
+                    ? "bg-slate-950/80 border-slate-800 text-white focus:border-slate-400"
+                    : "bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-450"
+                }`}
+              />
+            </div>
           </div>
 
           {/* Category Select (Only for generic expenses) */}
@@ -237,8 +289,12 @@ export function PlanModal({
                       onClick={() => setCategory(c.name)}
                       className={`py-1.5 rounded-xl border text-[9px] font-bold text-center transition cursor-pointer ${
                         isSelected
-                          ? theme === "dark" ? "bg-indigo-550 border-indigo-650 text-white" : "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold shadow-sm"
-                          : theme === "dark" ? "bg-slate-950 border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100"
+                          ? theme === "dark"
+                            ? "bg-indigo-550 border-indigo-650 text-white"
+                            : "bg-indigo-50 border-indigo-200 text-indigo-700 font-extrabold shadow-sm"
+                          : theme === "dark"
+                            ? "bg-slate-950 border-slate-800 text-slate-400"
+                            : "bg-slate-50 border-slate-200 text-slate-650 hover:bg-slate-100"
                       }`}
                     >
                       <span className="block text-xs mb-0.5">{c.emoji}</span>
@@ -248,6 +304,21 @@ export function PlanModal({
                 })}
               </div>
             </div>
+          )}
+
+          {/* Mark as paid */}
+          {type === "expense" && (
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={markAsPaid}
+                onChange={(e) => setMarkAsPaid(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
+                Registrar como ya pagado
+              </span>
+            </label>
           )}
 
           {/* Buttons */}

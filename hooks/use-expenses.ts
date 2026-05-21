@@ -41,7 +41,7 @@ export function useExpenses(userId: string | undefined) {
     }
   }, [userId]);
 
-  const addExpense = async (payload: Omit<Expense, "id" | "user_id" | "created_at" | "paid_date">) => {
+  const addExpense = async (payload: Omit<Expense, "id" | "user_id" | "created_at" | "paid_date"> & { paid_date?: string | null }) => {
     if (!userId) return null;
     return withLoading(async () => {
       try {
@@ -53,7 +53,7 @@ export function useExpenses(userId: string | undefined) {
           type: payload.type,
           status: payload.status,
           due_date: payload.due_date || null,
-          paid_date: payload.status === "paid" ? new Date().toISOString() : null,
+          paid_date: payload.status === "paid" ? (payload.paid_date || new Date().toISOString()) : null,
         };
 
         const { data, error } = await insforge.database
@@ -83,7 +83,7 @@ export function useExpenses(userId: string | undefined) {
     }, "Registrando egreso...");
   };
 
-  const updateExpense = async (id: string, payload: Partial<Omit<Expense, "id" | "user_id" | "created_at" | "paid_date">>) => {
+  const updateExpense = async (id: string, payload: Partial<Omit<Expense, "id" | "user_id" | "created_at" | "paid_date"> & { paid_date?: string | null }>) => {
     if (!userId) return null;
     return withLoading(async () => {
       try {
@@ -91,8 +91,10 @@ export function useExpenses(userId: string | undefined) {
           ...payload,
           updated_at: new Date().toISOString(),
         };
-        if (payload.status) {
-          updatePayload.paid_date = payload.status === "paid" ? new Date().toISOString() : null;
+        if (payload.status !== undefined) {
+          updatePayload.paid_date = payload.status === "paid" ? (payload.paid_date || new Date().toISOString()) : null;
+        } else if (payload.paid_date !== undefined) {
+          updatePayload.paid_date = payload.paid_date;
         }
 
         const { data, error } = await insforge.database

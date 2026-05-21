@@ -12,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
 import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface DebtFormProps {
@@ -50,7 +49,7 @@ export function DebtForm({
   const [totalAmount, setTotalAmount] = useState<number | "">("");
   const [remainingAmount, setRemainingAmount] = useState<number | "">("");
   const [minimumPayment, setMinimumPayment] = useState<number | "">("");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDateDay, setDueDateDay] = useState("15");
   const [installments, setInstallments] = useState("1");
   const [startMonth, setStartMonth] = useState("");
   const [autoCalculate, setAutoCalculate] = useState(false);
@@ -78,7 +77,7 @@ export function DebtForm({
       setTotalAmount(editingDebt.total_amount);
       setRemainingAmount(editingDebt.remaining_amount);
       setMinimumPayment(editingDebt.minimum_payment);
-      setDueDate(editingDebt.due_date || "");
+      setDueDateDay(editingDebt.due_date ? editingDebt.due_date.split("-")[2] || "15" : "15");
       setInstallments(editingDebt.installments?.toString() || "1");
       setStartMonth(editingDebt.start_month || "");
       setAutoCalculate(false);
@@ -98,18 +97,14 @@ export function DebtForm({
     }
   }, [installments, remainingAmount, autoCalculate]);
 
-  useEffect(() => {
-    if (dueDate && dueDate < minDueDate) {
-      setDueDate(minDueDate);
-    }
-  }, [dueDate, minDueDate]);
+  // removed minDueDate effect
 
   const resetForm = () => {
     setTitle("");
     setTotalAmount("");
     setRemainingAmount("");
     setMinimumPayment("");
-    setDueDate("");
+    setDueDateDay("15");
     setInstallments("1");
     setStartMonth("");
     setAutoCalculate(false);
@@ -132,17 +127,20 @@ export function DebtForm({
 
     if (isNaN(total) || total <= 0 || isNaN(remaining) || remaining < 0) return;
     if (remaining > total) return;
-    if (dueDate && dueDate < minDueDate) {
-      toast.error("La fecha de vencimiento debe ser igual o posterior al mes base seleccionado.");
+    const dDay = parseInt(dueDateDay, 10);
+    if (isNaN(dDay) || dDay < 1 || dDay > 31) {
+      toast.error("Por favor, ingresa un día de vencimiento válido (1-31).");
       return;
     }
+    const dayPad = dDay < 10 ? `0${dDay}` : dDay;
+    const computedDueDate = `${baseDueMonth}-${dayPad}`;
 
     await onSave({
       title,
       total_amount: total,
       remaining_amount: remaining,
       minimum_payment: minimum,
-      due_date: dueDate || null,
+      due_date: computedDueDate,
       installments: normalizedInstallments,
       start_month: startMonth || null,
     });
@@ -335,19 +333,20 @@ export function DebtForm({
         {/* Due Date */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-            Fecha de Vencimiento (Opcional)
+            Día de Vencimiento Mensual
           </label>
-          <DatePicker
-            value={dueDate || null}
-            onChange={(value) => setDueDate(value || "")}
-            minDate={minDueDate}
-            placeholder="Seleccionar fecha de vencimiento"
-            className={`w-full h-10 justify-start rounded-xl px-3.5 text-sm font-semibold ${
-              theme === "dark"
-                ? "bg-slate-950/80 border-slate-800 text-white hover:bg-slate-900"
-                : "bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100"
-            }`}
+          <input
+            type="number"
+            min="1"
+            max="31"
+            value={dueDateDay}
+            onChange={(e) => setDueDateDay(e.target.value)}
+            required
+            className={inputClass}
           />
+          <p className="text-[10px] text-slate-500 mt-1 font-medium">
+            Día del mes en que se debe pagar la cuota (por defecto el 15).
+          </p>
         </div>
 
         <button

@@ -12,6 +12,15 @@ export function useExpenses(userId: string | undefined) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
   const { withLoading } = useGlobalLoading();
+  const MAX_TITLE_LENGTH = 255;
+  const MAX_CATEGORY_LENGTH = 100;
+
+  const clampText = (value: unknown, maxLength: number) => {
+    const normalized = String(value ?? "").trim();
+    return normalized.length > maxLength
+      ? normalized.slice(0, maxLength)
+      : normalized;
+  };
 
   const fetchExpenses = useCallback(async () => {
     if (!userId) return;
@@ -45,15 +54,27 @@ export function useExpenses(userId: string | undefined) {
     if (!userId) return null;
     return withLoading(async () => {
       try {
+        const title = clampText(payload.title, MAX_TITLE_LENGTH);
+        if (!title) {
+          toast.error("El titulo del movimiento es obligatorio");
+          return null;
+        }
+
+        const category =
+          clampText(payload.category, MAX_CATEGORY_LENGTH) || "Otros";
+
         const newPayload = {
           user_id: userId,
-          title: payload.title,
+          title,
           amount: payload.amount,
-          category: payload.category,
+          category,
           type: payload.type,
           status: payload.status,
           due_date: payload.due_date || null,
-          paid_date: payload.status === "paid" ? (payload.paid_date || new Date().toISOString()) : null,
+          paid_date:
+            payload.status === "paid"
+              ? payload.paid_date || new Date().toISOString()
+              : null,
         };
 
         const { data, error } = await insforge.database

@@ -230,9 +230,57 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
 
   const writeSystemLog = useCallback(async (actionType: string, message: string, details?: Record<string, any>) => {
     try {
-      const detailsStr = details ? `|||${JSON.stringify(details)}` : "";
+      const MAX_LOG_TITLE_LENGTH = 255;
+      const safeActionType = actionType.replace(/\|\|\|/g, " ").trim();
+      const safeMessage = message.replace(/\|\|\|/g, " ").trim();
+      const prefix = `LOG:${safeActionType}|||`;
+      const availableMessage = Math.max(
+        0,
+        MAX_LOG_TITLE_LENGTH - prefix.length,
+      );
+      const boundedMessage = safeMessage.slice(0, availableMessage);
+
+      let detailsStr = "";
+      if (details) {
+        const compactDetails = {
+          id: details.id,
+          title: details.title,
+          amount: details.amount,
+          category: details.category,
+          status: details.status,
+          type: details.type,
+          old: details.old
+            ? {
+                title: details.old.title,
+                amount: details.old.amount,
+                category: details.old.category,
+                status: details.old.status,
+                type: details.old.type,
+              }
+            : undefined,
+          new: details.new
+            ? {
+                title: details.new.title,
+                amount: details.new.amount,
+                category: details.new.category,
+                status: details.new.status,
+                type: details.new.type,
+              }
+            : undefined,
+        };
+
+        const serialized = JSON.stringify(compactDetails);
+        const detailsCandidate = `|||${serialized}`;
+        if (
+          (prefix + boundedMessage + detailsCandidate).length <=
+          MAX_LOG_TITLE_LENGTH
+        ) {
+          detailsStr = detailsCandidate;
+        }
+      }
+
       await addExpenseRaw({
-        title: `LOG:${actionType}|||${message}${detailsStr}`,
+        title: `${prefix}${boundedMessage}${detailsStr}`,
         amount: 0,
         category: "LOG",
         type: "one-time",
@@ -253,7 +301,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
            const cat = result.category === "Ingresos" ? "ingreso" : result.type === "recurrent" ? "plantilla recurrente" : "gasto";
            writeSystemLog("CREAR", `Registraste un ${cat} llamado '${result.title}' por ${formatCurrency(result.amount)}`, result);
         }
-        
+
         const now = new Date();
         const month = now.getMonth() + 1;
         const year = now.getFullYear();
@@ -304,7 +352,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [deleteExpenseRaw, expenses, touchSync, writeSystemLog]);
 
   const toggleExpenseStatus = wrap(toggleExpenseStatusRaw);
-  
+
   const addDebt = useCallback(async (...args: Parameters<typeof addDebtRaw>) => {
     const result = await addDebtRaw(...args);
     if (result) {

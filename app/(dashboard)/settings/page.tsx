@@ -2,116 +2,299 @@
 
 import React, { useState, useEffect } from "react";
 import { useFinance } from "@/providers/finance-provider";
-import { Settings, Save } from "lucide-react";
+import { Settings, Save, Plus, Trash2, Briefcase, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { insforge } from "@/lib/insforge";
 
 export default function SettingsPage() {
-  const { budget, updateBudget, budgetLoading: loading } = useFinance();
+  const { budget, updateBudget, budgetLoading, expenses, refetchAll } = useFinance();
 
-  const [income, setIncome] = useState<number | "">("");
+  const [profileType, setProfileType] = useState<string>("empleado");
+  const [contractType, setContractType] = useState<string>("indefinido");
   const [savingsGoal, setSavingsGoal] = useState<number | "">("");
   const [budgetLimit, setBudgetLimit] = useState<number | "">("");
+  const [yearlySalaries, setYearlySalaries] = useState<{ year: number; amount: number; id?: string }[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Sync inputs with budget data
+  // Sync inputs with budget data & extract CONFIG expenses
   useEffect(() => {
     if (budget) {
-      setIncome(budget.monthly_income > 0 ? budget.monthly_income : "");
       setSavingsGoal(budget.monthly_savings_goal > 0 ? budget.monthly_savings_goal : "");
       setBudgetLimit(budget.monthly_budget > 0 ? budget.monthly_budget : "");
     }
-  }, [budget]);
+    
+    let pType = "empleado";
+    let cType = "indefinido";
+    const salaries: { year: number; amount: number; id?: string }[] = [];
+    
+    expenses.forEach(e => {
+      if (e.title === "CONFIG:PROFILE_TYPE") pType = e.category;
+      if (e.title === "CONFIG:CONTRACT_TYPE") cType = e.category;
+      if (e.title.startsWith("CONFIG:SALARY:")) {
+        const year = parseInt(e.title.split(":")[2]);
+        if (!isNaN(year)) {
+          salaries.push({ year, amount: e.amount, id: e.id });
+        }
+      }
+    });
+
+    if (salaries.length === 0 && budget && budget.monthly_income > 0) {
+      salaries.push({ year: new Date().getFullYear(), amount: budget.monthly_income });
+    } else {
+      salaries.sort((a, b) => b.year - a.year);
+    }
+    
+    setProfileType(pType);
+    setContractType(cType);
+    setYearlySalaries(salaries);
+  }, [budget, expenses]);
+
+  const addYear = () => {
+    const nextYear = yearlySalaries.length > 0 ? Math.max(...yearlySalaries.map(s => s.year)) + 1 : new Date().getFullYear();
+    setYearlySalaries([{ year: nextYear, amount: 0 }, ...yearlySalaries].sort((a, b) => b.year - a.year));
+  };
+
+  const removeYear = (idx: number) => {
+    const newSalaries = [...yearlySalaries];
+    newSalaries.splice(idx, 1);
+    setYearlySalaries(newSalaries);
+  };
+
+  const updateYearSalary = (idx: number, field: "year" | "amount", val: number) => {
+    const newSalaries = [...yearlySalaries];
+    newSalaries[idx] = { ...newSalaries[idx], [field]: val };
+    setYearlySalaries(newSalaries);
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const incVal = (income as number) || 0;
-    const savVal = (savingsGoal as number) || 0;
-    const budVal = (budgetLimit as number) || 0;
+    setLoading(true);
+    
+    try {
+      const savVal = (savingsGoal as number) || 0;
+      const budVal = (budgetLimit as number) || 0;
+      
+      // Compute the latest salary for the global budget (used for generic DTI limits if no year specified)
+      const currentYear = new Date().getFullYear();
+      const latestSalaryObj = yearlySalaries.find(s => s.year === currentYear) || yearlySalaries[0];
+      const latestSalary = latestSalaryObj?.amount || 0;
 
-    if (incVal < 0 || savVal < 0 || budVal < 0) {
-      toast.error("Los valores no pueden ser negativos.");
-      return;
-    }
+      // 1. Save standard budget limits
+      await updateBudget(latestSalary, budVal, savVal);
 
-    const success = await updateBudget(incVal, budVal, savVal);
-    if (success) {
-      // Handled by custom hook's toast
+      // 2. Clear old config silently & write new ones
+      if (budget?.user_id) {
+        const oldIds = expenses.filter(ex => ex.title.startsWith("CONFIG:")).map(ex => ex.id);
+        
+        for (const id of oldIds) {
+          await insforge.database.from("expenses").delete().eq("id", id);
+        }
+
+        const newConfigs = [
+          { user_id: budget.user_id, title: "CONFIG:PROFILE_TYPE", amount: 0, category: profileType, type: "one-time", status: "paid" },
+          { user_id: budget.user_id, title: "CONFIG:CONTRACT_TYPE", amount: 0, category: contractType, type: "one-time", status: "paid" }
+        ];
+
+        yearlySalaries.forEach(s => {
+          if (s.amount > 0) {
+            newConfigs.push({
+              user_id: budget.user_id,
+              title: `CONFIG:SALARY:${s.year}`,
+              amount: s.amount,
+              category: "SYSTEM",
+              type: "one-time",
+              status: "paid"
+            });
+          }
+        });
+
+        await insforge.database.from("expenses").insert(newConfigs);
+        await refetchAll();
+        toast.success("✅ Configuración de perfil y salarios actualizada correctamente.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Ocurrió un error al guardar la configuración.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  const isSaving = loading || budgetLoading;
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-    <PoolBalanceBanner />
-    <section className="border rounded-3xl p-8 shadow-xl space-y-6 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
-      <h2 className="text-lg font-black flex items-center gap-2">
-        <Settings className="w-6 h-6 text-indigo-500" />
-        <span>Configuración de Parámetros de Libertad Financiera</span>
-      </h2>
-      <p className="text-xs text-slate-500 leading-relaxed font-semibold">
-        Establece con honestidad tus ingresos reales mensuales y tus objetivos de ahorro. Con estos datos calcularemos tus índices de sobreendeudamiento (DTI) y flujo de caja libre para sacarte del saldo negativo.
-      </p>
-
-      <form onSubmit={handleSave} className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-
+    <div className="max-w-3xl mx-auto space-y-6 pb-12">
+      <PoolBalanceBanner />
+      
+      <section className="border rounded-3xl p-6 sm:p-8 shadow-xl space-y-8 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
         <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            Ingresos Mensuales Propios
-          </label>
-          <CurrencyInput
-            value={income === "" ? undefined : income}
-            onChange={(val) => setIncome(val)}
-            className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-          />
+          <h2 className="text-lg font-black flex items-center gap-2">
+            <Settings className="w-6 h-6 text-indigo-500" />
+            <span>Configuración Financiera</span>
+          </h2>
+          <p className="text-xs text-slate-500 leading-relaxed font-semibold mt-2">
+            Parametriza tus perfiles de ingresos, configuración anual y metas de ahorro. Estos datos definen cómo calcularemos tus proyecciones y flujos de caja.
+          </p>
         </div>
 
-        <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            Primas autocalculadas (Junio y Diciembre)
-          </label>
-          <CurrencyInput
-            value={income === "" ? undefined : income}
-            readOnly
-            disabled
-            className="w-full border rounded-xl py-3 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white opacity-80 cursor-not-allowed"
-          />
-          <p className="text-[11px] text-slate-500 mt-1">Se suma automáticamente a tus ingresos en junio y diciembre según la ley laboral colombiana.</p>
-        </div>
+        <form onSubmit={handleSave} className="space-y-8">
 
-        <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            Meta de Ahorro Mensual
-          </label>
-          <CurrencyInput
-            value={savingsGoal === "" ? undefined : savingsGoal}
-            onChange={(val) => setSavingsGoal(val)}
-            className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-          />
-        </div>
+          {/* PERFIL SECTION */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <Briefcase className="w-4 h-4 text-emerald-500" />
+              Perfil Profesional
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
+                  Tipo de Perfil
+                </label>
+                <Select value={profileType} onValueChange={(val) => setProfileType(val as string)}>
+                  <SelectTrigger className="w-full border rounded-xl py-6 px-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                    <SelectValue placeholder="Tipo de Perfil" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="empleado">Empleado</SelectItem>
+                    <SelectItem value="independiente">Independiente</SelectItem>
+                    <SelectItem value="desempleado">Desempleado / Solo Gastos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            Presupuesto Límite de Gasto
-          </label>
-          <CurrencyInput
-            value={budgetLimit === "" ? undefined : budgetLimit}
-            onChange={(val) => setBudgetLimit(val)}
-            className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-          />
-        </div>
+              {profileType === "empleado" && (
+                <div>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
+                    Tipo de Contrato
+                  </label>
+                  <Select value={contractType} onValueChange={(val) => setContractType(val as string)}>
+                    <SelectTrigger className="w-full border rounded-xl py-6 px-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white">
+                      <SelectValue placeholder="Tipo de Contrato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="indefinido">Término Indefinido</SelectItem>
+                      <SelectItem value="fijo">Término Fijo</SelectItem>
+                      <SelectItem value="prestacion_servicios">Prestación de Servicios</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            
+            {profileType === "empleado" && (contractType === "indefinido" || contractType === "fijo") ? (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
+                Se calcularán automáticamente las <strong>Primas Legales</strong> (medio salario) sumadas a tus ingresos en los meses de Junio y Diciembre.
+              </p>
+            ) : profileType !== "desempleado" ? (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+                Bajo este perfil, <strong>no</strong> se calcularán primas automáticas en junio y diciembre.
+              </p>
+            ) : null}
+          </div>
 
-        <div className="flex justify-end gap-3 pt-6">
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
-          >
-            <Save className="w-5 h-5" />
-            <span>{loading ? "Guardando..." : "Guardar Parámetros de Planificación"}</span>
-          </button>
-        </div>
-      </form>
-    </section>
+          {/* SALARY SECTION */}
+          {profileType !== "desempleado" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  Salario Mensual (Por Año)
+                </h3>
+                <button
+                  type="button"
+                  onClick={addYear}
+                  className="flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 px-2 py-1 rounded-lg transition"
+                >
+                  <Plus className="w-3 h-3" />
+                  Agregar Año
+                </button>
+              </div>
+
+              {yearlySalaries.length === 0 ? (
+                <p className="text-xs text-slate-500 italic">No has configurado ingresos. Haz clic en "Agregar Año".</p>
+              ) : (
+                <div className="space-y-3">
+                  {yearlySalaries.map((s, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
+                      <div className="w-24">
+                        <label className="sr-only">Año</label>
+                        <input
+                          type="number"
+                          value={s.year}
+                          onChange={(e) => updateYearSalary(idx, "year", parseInt(e.target.value))}
+                          className="w-full bg-transparent font-black text-indigo-500 text-center focus:outline-none"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="sr-only">Salario</label>
+                        <CurrencyInput
+                          value={s.amount === 0 ? undefined : s.amount}
+                          onChange={(val) => updateYearSalary(idx, "amount", val as number)}
+                          placeholder="Salario mensual..."
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-2 px-3 focus:outline-none text-sm font-bold"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeYear(idx)}
+                        className="p-2 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* BUDGET SECTION */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-bold flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <Settings className="w-4 h-4 text-amber-500" />
+              Metas y Presupuestos
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
+                  Meta de Ahorro Mensual
+                </label>
+                <CurrencyInput
+                  value={savingsGoal === "" ? undefined : savingsGoal}
+                  onChange={(val) => setSavingsGoal(val)}
+                  className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
+                  Presupuesto Límite de Gasto
+                </label>
+                <CurrencyInput
+                  value={budgetLimit === "" ? undefined : budgetLimit}
+                  onChange={(val) => setBudgetLimit(val)}
+                  className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl transition flex items-center justify-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-5 h-5" />
+              <span>{isSaving ? "Guardando..." : "Guardar Parámetros"}</span>
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }

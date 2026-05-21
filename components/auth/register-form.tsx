@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useTheme } from "@/providers/theme-provider";
 import { insforge } from "@/lib/insforge";
 import { toast } from "sonner";
@@ -51,15 +51,24 @@ export function RegisterForm({ onLoginClick, onOtpRequired }: RegisterFormProps)
     }, "Creando cuenta de usuario...");
   };
 
+  const inputBase = `w-full rounded-2xl py-3.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 ${
+    theme === "dark"
+      ? "bg-white/[0.05] border border-white/[0.08] text-white placeholder-slate-500 focus:ring-indigo-500/40 focus:border-indigo-500/40"
+      : "bg-slate-50/80 border border-slate-200 text-slate-900 placeholder-slate-400 focus:ring-indigo-500/30 focus:border-indigo-400"
+  }`;
+
   return (
-    <form onSubmit={handleSignUp} className="space-y-3">
-      <div>
-        <label className={`block text-xs font-bold mb-1 ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
+    <form onSubmit={handleSignUp} className="space-y-4">
+      {/* Email */}
+      <div className="space-y-1.5">
+        <label className={`block text-[11px] font-bold uppercase tracking-wider ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
           Correo Electrónico
         </label>
-        <div className="relative">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-            <Mail className="w-4 h-4" />
+        <div className="relative group">
+          <span className={`absolute inset-y-0 left-0 pl-4 flex items-center transition-colors ${
+            theme === "dark" ? "text-slate-500 group-focus-within:text-indigo-400" : "text-slate-400 group-focus-within:text-indigo-500"
+          }`}>
+            <Mail className="w-[18px] h-[18px]" />
           </span>
           <input
             type="email"
@@ -67,57 +76,56 @@ export function RegisterForm({ onLoginClick, onOtpRequired }: RegisterFormProps)
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading}
-            className={`w-full border rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 transition text-sm ${
-              theme === "dark"
-                ? "bg-slate-950/80 border-slate-800 text-white placeholder-slate-600"
-                : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400"
-            }`}
+            className={`${inputBase} pl-11 pr-4`}
           />
         </div>
       </div>
 
-      <div>
-        <label className={`block text-xs font-bold mb-1 ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
+      {/* Password */}
+      <div className="space-y-1.5">
+        <label className={`block text-[11px] font-bold uppercase tracking-wider ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
           Contraseña
         </label>
-        <div className="relative">
-          <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-            <Lock className="w-4 h-4" />
+        <div className="relative group">
+          <span className={`absolute inset-y-0 left-0 pl-4 flex items-center transition-colors ${
+            theme === "dark" ? "text-slate-500 group-focus-within:text-indigo-400" : "text-slate-400 group-focus-within:text-indigo-500"
+          }`}>
+            <Lock className="w-[18px] h-[18px]" />
           </span>
           <input
             type="password"
-            placeholder="••••••••"
+            placeholder="Mín. 6 caracteres"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={loading}
-            className={`w-full border rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 transition text-sm ${
-              theme === "dark"
-                ? "bg-slate-950/80 border-slate-800 text-white placeholder-slate-600"
-                : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400"
-            }`}
+            className={`${inputBase} pl-11 pr-4`}
           />
         </div>
       </div>
 
+      {/* Submit */}
       <button
         type="submit"
         disabled={loading}
-        className={`w-full font-bold py-2 px-4 rounded-xl transition shadow-md cursor-pointer disabled:opacity-50 text-sm ${
-          theme === "dark"
-            ? "bg-slate-100 hover:bg-slate-200 text-slate-950 shadow-slate-950/50"
-            : "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10"
-        }`}
+        className="w-full font-bold py-3.5 px-4 rounded-2xl transition-all duration-200 shadow-lg cursor-pointer disabled:opacity-50 text-sm flex items-center justify-center gap-2 group bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-indigo-600/25 hover:shadow-indigo-500/30 hover:shadow-xl active:scale-[0.98]"
       >
-        {loading ? "Creando cuenta..." : "Crear Cuenta"}
+        <span>{loading ? "Creando cuenta..." : "Crear Cuenta"}</span>
+        {!loading && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />}
       </button>
 
-      <div className="text-center pt-0.5">
+      {/* Login link */}
+      <div className="text-center">
         <button
           type="button"
           onClick={onLoginClick}
-          className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-xs font-semibold transition"
+          className={`text-xs font-semibold transition ${
+            theme === "dark"
+              ? "text-slate-500 hover:text-indigo-400"
+              : "text-slate-500 hover:text-indigo-600"
+          }`}
         >
-          ¿Ya tienes cuenta? Inicia sesión
+          ¿Ya tienes cuenta?{" "}
+          <span className="font-bold underline underline-offset-2">Inicia sesión</span>
         </button>
       </div>
     </form>

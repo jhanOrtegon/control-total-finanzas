@@ -108,6 +108,27 @@ export function isDeferDebtExpense(expense: Expense) {
   return expense.title.startsWith("DEFER_DEBT:");
 }
 
+export function isSystemExpense(expense: Expense) {
+  return expense.title.startsWith("CONFIG:");
+}
+
+export function getUserProfileConfig(expenses: Expense[]) {
+  const profileExp = expenses.find(e => e.title === "CONFIG:PROFILE_TYPE");
+  const contractExp = expenses.find(e => e.title === "CONFIG:CONTRACT_TYPE");
+  return {
+    profileType: profileExp ? profileExp.category : "empleado",
+    contractType: contractExp ? contractExp.category : "indefinido"
+  };
+}
+
+export function getYearlyIncome(expenses: Expense[], year: number, defaultIncome: number) {
+  const salaryExp = expenses.find(e => e.title === `CONFIG:SALARY:${year}`);
+  if (salaryExp && salaryExp.amount > 0) {
+    return salaryExp.amount;
+  }
+  return defaultIncome;
+}
+
 export function getRecurrentTemplates(expenses: Expense[]) {
   return expenses.filter((e) => e.type === "recurrent");
 }
@@ -157,7 +178,8 @@ export function computeMonthlySummary(
         e.category !== "Ingresos" &&
         e.status === "paid" &&
         getExpenseDateInMonth(e, month, year) &&
-        !isDeferDebtExpense(e),
+        !isDeferDebtExpense(e) &&
+        !isSystemExpense(e),
     )
     .reduce((acc, e) => acc + e.amount, 0);
 
@@ -170,7 +192,8 @@ export function computeMonthlySummary(
         getExpenseDateInMonth(e, month, year) &&
         !recurrentTitles.includes(e.title.toLowerCase()) &&
         !isDebtPaymentExpense(e) &&
-        !isDeferDebtExpense(e),
+        !isDeferDebtExpense(e) &&
+        !isSystemExpense(e),
     )
     .reduce((acc, e) => acc + e.amount, 0);
 
@@ -202,11 +225,16 @@ export function computeMonthlySummary(
   const totalInitialDebt = debts.reduce((acc, d) => acc + d.total_amount, 0);
   const totalPaidOffDebt = totalInitialDebt - totalOutstandingDebt;
 
-  const baseIncome = budget?.monthly_income || 0;
+  const profile = getUserProfileConfig(expenses);
+  const baseIncome = getYearlyIncome(expenses, year, budget?.monthly_income || 0);
   const savingsGoal = budget?.monthly_savings_goal || 0;
   // Prima legal: se paga en junio y diciembre (Colombia, equivale a medio salario mensual)
   let prima = 0;
-  if (month === 6 || month === 12) {
+  if (
+    (month === 6 || month === 12) &&
+    profile.profileType === "empleado" &&
+    (profile.contractType === "indefinido" || profile.contractType === "fijo")
+  ) {
     prima = baseIncome / 2;
   }
   const totalIncome = baseIncome + extraIncome + prima;
@@ -254,7 +282,8 @@ export function computeMonthlySummary(
       getExpenseDateInMonth(e, month, year) &&
       !recurrentTitles.includes(e.title.toLowerCase()) &&
       !isDebtPaymentExpense(e) &&
-      !isDeferDebtExpense(e),
+      !isDeferDebtExpense(e) &&
+      !isSystemExpense(e),
   );
   pendingObligationsCount += oneTimePending.length;
 

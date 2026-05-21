@@ -29,6 +29,7 @@ import { formatCurrency } from "@/lib/utils";
 import { EnvelopeAllocationChart } from "@/components/budgets/envelope-allocation-chart";
 import { AlertCenter } from "@/components/alerts/alert-center";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type SortMode = "usage" | "name" | "remaining";
 
@@ -241,20 +242,23 @@ export function CategoryEnvelopes() {
           </div>
           <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
             <ArrowUpDown className="w-3 h-3" />
-            <select
+            <Select
               value={sortMode}
-              onChange={(e) => setSortMode(e.target.value as SortMode)}
-              title="Ordenar categorías"
-              className={`border rounded-lg py-1 px-2 text-[10px] font-black cursor-pointer ${
+              onValueChange={(v) => setSortMode(v as SortMode)}
+            >
+              <SelectTrigger className={`h-8 px-2 border rounded-lg text-[10px] font-black cursor-pointer w-[140px] ${
                 theme === "dark"
                   ? "bg-slate-950 border-slate-800"
                   : "bg-white border-slate-200"
-              }`}
-            >
-              <option value="usage">% usado</option>
-              <option value="remaining">Menos disponible</option>
-              <option value="name">Nombre</option>
-            </select>
+              }`}>
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="usage" className="text-[10px] font-bold">% usado</SelectItem>
+                <SelectItem value="remaining" className="text-[10px] font-bold">Menos disponible</SelectItem>
+                <SelectItem value="name" className="text-[10px] font-bold">Nombre</SelectItem>
+              </SelectContent>
+            </Select>
           </label>
         </div>
 

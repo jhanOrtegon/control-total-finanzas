@@ -16,6 +16,7 @@ import { formatCurrency } from "@/lib/utils";
 import { Pagination } from "@/components/shared/pagination";
 import { Download, History, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -122,25 +123,26 @@ export default function HistoryPage() {
         </Link>
 
         <div className="flex flex-wrap gap-3 mt-4">
-          <select
-            value={month}
-            onChange={(e) => {
-              setPeriod(Number(e.target.value), year);
+          <Select
+            value={String(month)}
+            onValueChange={(val) => {
+              setPeriod(Number(val), year);
               setPage(1);
             }}
-            title="Seleccionar mes"
-            className={`border rounded-xl py-2 px-3 text-xs font-bold ${
-              theme === "dark"
-                ? "bg-slate-950 border-slate-800"
-                : "bg-slate-50 border-slate-200"
-            }`}
           >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                Mes {i + 1}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className={`w-[120px] rounded-xl py-2 text-xs font-bold ${
+              theme === "dark" ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"
+            }`}>
+              <SelectValue placeholder="Mes" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i + 1} value={String(i + 1)}>
+                  Mes {i + 1}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <input
             type="number"
             value={year}
@@ -156,25 +158,26 @@ export default function HistoryPage() {
                 : "bg-slate-50 border-slate-200"
             }`}
           />
-          <select
+          <Select
             value={typeFilter}
-            onChange={(e) => {
-              setTypeFilter(e.target.value as keyof typeof TYPE_LABELS);
+            onValueChange={(val) => {
+              setTypeFilter(val as keyof typeof TYPE_LABELS);
               setPage(1);
             }}
-            title="Filtrar por tipo de movimiento"
-            className={`border rounded-xl py-2 px-3 text-xs font-bold ${
-              theme === "dark"
-                ? "bg-slate-950 border-slate-800"
-                : "bg-slate-50 border-slate-200"
-            }`}
           >
-            {Object.entries(TYPE_LABELS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className={`w-[140px] rounded-xl py-2 text-xs font-bold ${
+              theme === "dark" ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"
+            }`}>
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(TYPE_LABELS).map(([k, label]) => (
+                <SelectItem key={k} value={k}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input

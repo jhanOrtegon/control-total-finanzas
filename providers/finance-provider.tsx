@@ -72,6 +72,8 @@ interface FinanceContextType {
   deleteDebt: ReturnType<typeof useDebts>["deleteDebt"];
   recordDebtPayment: ReturnType<typeof useDebts>["recordDebtPayment"];
   undoDebtPayment: ReturnType<typeof useDebts>["undoDebtPayment"];
+  deferDebtMonth: ReturnType<typeof useDebts>["deferDebtMonth"];
+  undoDeferDebtMonth: ReturnType<typeof useDebts>["undoDeferDebtMonth"];
   closeMonth: ReturnType<typeof useMonthlySnapshots>["closeMonth"];
   getSnapshot: ReturnType<typeof useMonthlySnapshots>["getSnapshot"];
   upsertCategoryLimit: ReturnType<typeof useCategoryBudgets>["upsertCategoryLimit"];
@@ -116,6 +118,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     deleteDebt: deleteDebtRaw,
     recordDebtPayment: recordDebtPaymentRaw,
     undoDebtPayment: undoDebtPaymentRaw,
+    deferDebtMonth: deferDebtMonthRaw,
+    undoDeferDebtMonth: undoDeferDebtMonthRaw,
     refetchDebts,
     applyRealtimeDebt,
   } = useDebts(userId);
@@ -284,6 +288,30 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [undoDebtPaymentRaw, refetchExpenses, refetchPayments, touchSync],
   );
 
+  const deferDebtMonth = useCallback(
+    async (debtId: string, month: number, year: number, observation: string) => {
+      const ok = await deferDebtMonthRaw(debtId, month, year, observation);
+      if (ok) {
+        await refetchExpenses();
+        touchSync();
+      }
+      return ok;
+    },
+    [deferDebtMonthRaw, refetchExpenses, touchSync],
+  );
+
+  const undoDeferDebtMonth = useCallback(
+    async (debtId: string, deferExpenseId: string) => {
+      const ok = await undoDeferDebtMonthRaw(debtId, deferExpenseId);
+      if (ok) {
+        await refetchExpenses();
+        touchSync();
+      }
+      return ok;
+    },
+    [undoDeferDebtMonthRaw, refetchExpenses, touchSync],
+  );
+
   const updateBudgetWrapped = useCallback(
     async (income: number, monthlyBudget: number, savingsGoal: number) => {
       const ok = await updateBudget(income, monthlyBudget, savingsGoal);
@@ -406,6 +434,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       deleteDebt,
       recordDebtPayment,
       undoDebtPayment,
+      deferDebtMonth,
+      undoDeferDebtMonth,
       closeMonth: closeMonthWrapped,
       getSnapshot,
       upsertCategoryLimit: upsertCategoryLimitWrapped,
@@ -443,6 +473,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       deleteDebt,
       recordDebtPayment,
       undoDebtPayment,
+      deferDebtMonth,
+      undoDeferDebtMonth,
       closeMonthWrapped,
       getSnapshot,
       upsertCategoryLimitWrapped,

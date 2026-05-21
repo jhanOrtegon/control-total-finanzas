@@ -51,14 +51,14 @@ export function OtpForm({ email, onBackToRegister }: OtpFormProps) {
   };
 
   return (
-    <form onSubmit={handleVerifyOtp} className="space-y-5">
+    <form onSubmit={handleVerifyOtp} className="space-y-3">
       <div>
-        <label className={`block text-sm font-bold mb-2 ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
+        <label className={`block text-xs font-bold mb-1 ${theme === "dark" ? "text-slate-300" : "text-slate-700"}`}>
           Código de Verificación
         </label>
         <div className="relative">
           <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-500">
-            <Sparkles className="w-5 h-5" />
+            <Sparkles className="w-4 h-4" />
           </span>
           <input
             type="text"
@@ -67,14 +67,14 @@ export function OtpForm({ email, onBackToRegister }: OtpFormProps) {
             value={otpCode}
             onChange={(e) => setOtpCode(e.target.value)}
             disabled={loading}
-            className={`w-full border rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 text-center tracking-widest text-lg font-bold transition ${
+            className={`w-full border rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400/20 text-center tracking-widest text-lg font-bold transition ${
               theme === "dark"
                 ? "bg-slate-950/80 border-slate-800 text-white placeholder-slate-600"
                 : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400"
             }`}
           />
         </div>
-        <p className="text-xs text-slate-500 mt-2 text-center">
+        <p className="text-[10px] text-slate-500 mt-1.5 text-center">
           Ingresa el código de 6 dígitos enviado a tu correo {email}.
         </p>
       </div>
@@ -82,7 +82,7 @@ export function OtpForm({ email, onBackToRegister }: OtpFormProps) {
       <button
         type="submit"
         disabled={loading}
-        className={`w-full font-bold py-3.5 px-4 rounded-xl transition shadow-md cursor-pointer disabled:opacity-50 text-sm ${
+        className={`w-full font-bold py-2 px-4 rounded-xl transition shadow-md cursor-pointer disabled:opacity-50 text-sm ${
           theme === "dark"
             ? "bg-slate-100 hover:bg-slate-200 text-slate-950 shadow-slate-950/50"
             : "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10"
@@ -91,7 +91,7 @@ export function OtpForm({ email, onBackToRegister }: OtpFormProps) {
         {loading ? "Verificando..." : "Verificar Correo"}
       </button>
 
-      <div className="text-center pt-2">
+      <div className="text-center pt-0.5">
         <button
           type="button"
           onClick={onBackToRegister}

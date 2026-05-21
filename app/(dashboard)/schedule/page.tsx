@@ -3,12 +3,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFinance } from "@/providers/finance-provider";
-import { isDateInMonth } from "@/lib/finance-calculations";
+import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
 import { PlanModal } from "@/components/schedule/plan-modal";
 import { MonthCloseWizard } from "@/components/month-close/month-close-wizard";
+import { DeferDebtDialog } from "@/components/schedule/defer-debt-dialog";
 import { Pagination } from "@/components/shared/pagination";
 import { useConfirm } from "@/providers/confirm-provider";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -87,57 +88,7 @@ function percentToHeightClass(percent: number) {
   return HEIGHT_CLASSES[nearestIndex];
 }
 
-function parseDateToYearMonth(
-  value: string | null,
-): { year: number; month: number } | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return null;
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-  };
-}
 
-function parseYearMonth(
-  value: string | null,
-): { year: number; month: number } | null {
-  if (!value) return null;
-  const match = value.match(/^(\d{4})-(\d{2})$/);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) return null;
-  return { year, month };
-}
-
-function monthIndex(year: number, month: number) {
-  return year * 12 + (month - 1);
-}
-
-function isDebtApplicableToMonth(
-  debt: Debt,
-  targetMonth: number,
-  targetYear: number,
-) {
-  if (debt.remaining_amount <= 0) return false;
-
-  const start =
-    parseYearMonth(debt.start_month) ||
-    parseDateToYearMonth(debt.due_date) ||
-    parseDateToYearMonth(debt.created_at);
-  const targetIdx = monthIndex(targetYear, targetMonth);
-
-  if (!start) return false;
-
-  const startIdx = monthIndex(start.year, start.month);
-  if (targetIdx < startIdx) return false;
-
-  const installments =
-    debt.installments && debt.installments > 0 ? debt.installments : 1;
-  const endIdx = startIdx + installments - 1;
-  return targetIdx <= endIdx;
-}
 
 export default function SchedulePage() {
   const { theme } = useTheme();
@@ -150,6 +101,8 @@ export default function SchedulePage() {
     debts,
     recordDebtPayment,
     undoDebtPayment,
+    deferDebtMonth,
+    undoDeferDebtMonth,
     budget,
   } = useFinance();
 
@@ -166,6 +119,8 @@ export default function SchedulePage() {
   const [obligationsPage, setObligationsPage] = useState(1);
   const [scheduleTab, setScheduleTab] = useState<"pending" | "paid">("pending");
   const confirm = useConfirm();
+  const [deferTargetObligation, setDeferTargetObligation] = useState<any | null>(null);
+  const [deferDialogOpen, setDeferDialogOpen] = useState(false);
 
   const OBLIGATIONS_PER_PAGE = 6;
 
@@ -209,12 +164,13 @@ export default function SchedulePage() {
         !recurrentTemplates.some(
           (temp) => temp.title.toLowerCase() === e.title.toLowerCase(),
         ) &&
-        !e.title.toLowerCase().startsWith("abono a deuda:"),
+        !e.title.toLowerCase().startsWith("abono a deuda:") &&
+        !isDeferDebtExpense(e),
     );
 
     // 4. Debt minimum payments
     const activeDebts = debts.filter((d) =>
-      isDebtApplicableToMonth(d, monthNum, selectedYear),
+      isDebtApplicableToMonth(d, monthNum, selectedYear, expenses),
     );
 
     // Mappings
@@ -239,6 +195,10 @@ export default function SchedulePage() {
     }));
 
     const debtObligations = activeDebts.map((d) => {
+      const deferExpense = expenses.find(
+        (e) => (e.title === `DEFER_DEBT:${d.id}` || e.title.startsWith(`DEFER_DEBT:${d.id}::`)) && e.status === "paid" && getExpenseDateInMonth(e, monthNum, selectedYear)
+      );
+      
       const monthDebtPayments = debtPayments.filter(
         (p) =>
           p.debt_id === d.id &&
@@ -255,7 +215,10 @@ export default function SchedulePage() {
         amount: d.minimum_payment,
         category: "Otros",
         isDebt: true,
-        isPaid: amountPaid >= d.minimum_payment,
+        isDeferred: !!deferExpense,
+        deferReason: deferExpense ? deferExpense.title.split("::")[1] || "Sin observación" : null,
+        deferExpenseId: deferExpense?.id || null,
+        isPaid: amountPaid >= d.minimum_payment || !!deferExpense,
         amountPaid,
         debtId: d.id,
         latestPaymentId: latestPayment?.id ?? null,
@@ -274,12 +237,12 @@ export default function SchedulePage() {
     const totalDue =
       recurrentObligations.reduce((a, c) => a + c.amount, 0) +
       oneTimeObligations.reduce((a, c) => a + c.amount, 0) +
-      debtObligations.reduce((a, c) => a + c.amount, 0);
+      debtObligations.filter(d => !d.isDeferred).reduce((a, c) => a + c.amount, 0);
 
     const totalPaid =
       recurrentObligations.reduce((a, c) => a + (c.isPaid ? c.amount : 0), 0) +
       oneTimeObligations.reduce((a, c) => a + (c.isPaid ? c.amount : 0), 0) +
-      debtObligations.reduce(
+      debtObligations.filter(d => !d.isDeferred).reduce(
         (a, c) => a + (c.isPaid ? c.amount : c.amountPaid),
         0,
       );
@@ -411,11 +374,20 @@ export default function SchedulePage() {
     }
   };
 
-  const handleUndoDebtPaid = async (ob: {
-    title: string;
-    debtId: string;
-    latestPaymentId: string | null;
-  }) => {
+  const handleUndoDebtPaid = async (ob: any) => {
+    if (ob.isDeferred && ob.deferExpenseId) {
+      const ok = await confirm({
+        title: "Revertir aplazamiento",
+        description: "¿Estás seguro de deshacer el aplazamiento de esta deuda para este mes?",
+        confirmLabel: "Deshacer aplazamiento",
+        variant: "danger",
+      });
+      if (ok) {
+        await undoDeferDebtMonth(ob.debtId, ob.deferExpenseId);
+      }
+      return;
+    }
+
     if (!ob.latestPaymentId) {
       toast.error("No se encontró un abono para revertir en este mes.");
       return;
@@ -432,6 +404,11 @@ export default function SchedulePage() {
     if (!ok) return;
 
     await undoDebtPayment(ob.latestPaymentId);
+  };
+
+  const handleDeferDebt = (ob: any) => {
+    setDeferTargetObligation(ob);
+    setDeferDialogOpen(true);
   };
 
   return (
@@ -784,7 +761,7 @@ export default function SchedulePage() {
               mes.
             </p>
 
-            <div className="mt-3 inline-flex rounded-xl border border-slate-200 dark:border-slate-800 p-1 bg-slate-50 dark:bg-slate-900/60 gap-1">
+            <div id="schedule-tabs" className="mt-3 inline-flex rounded-xl border border-slate-200 dark:border-slate-800 p-1 bg-slate-50 dark:bg-slate-900/60 gap-1">
               <button
                 type="button"
                 onClick={() => setScheduleTab("pending")}
@@ -904,6 +881,11 @@ export default function SchedulePage() {
                             Deuda
                           </span>
                         )}
+                        {"isDeferred" in ob && ob.isDeferred && (
+                          <span className="text-[8px] uppercase tracking-wider font-extrabold bg-slate-500/10 text-slate-500 border border-slate-500/20 px-1.5 py-0.5 rounded-full">
+                            Aplazado
+                          </span>
+                        )}
                         {"isIncome" in ob && (
                           <span className="text-[8px] uppercase tracking-wider font-extrabold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
                             Ingreso
@@ -919,6 +901,11 @@ export default function SchedulePage() {
                           </span>
                           {ob.category}
                         </span>
+                        {"deferReason" in ob && ob.deferReason && (
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 italic">
+                            Motivo: {ob.deferReason}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -941,24 +928,44 @@ export default function SchedulePage() {
                     <div className="flex items-center gap-2">
                       {"isDebt" in ob && ob.isDebt ? (
                         ob.isPaid ? (
-                          <button
-                            onClick={() => handleUndoDebtPaid(ob)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            <span>Marcar Pendiente</span>
-                          </button>
+                          ob.isDeferred ? (
+                            <button
+                              onClick={() => handleUndoDebtPaid(ob)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Deshacer Aplazamiento</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleUndoDebtPaid(ob)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Marcar Pendiente</span>
+                            </button>
+                          )
                         ) : (
-                          <button
-                            onClick={() => {
-                              setPayingDebtId(ob.debtId);
-                              setPaymentAmount(ob.amount);
-                            }}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white"
-                          >
-                            <Coins className="w-3.5 h-3.5" />
-                            <span>Abonar</span>
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeferDebt(ob)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                              title="Aplazar cuota para este mes"
+                            >
+                              <Clock className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Aplazar</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setPayingDebtId(ob.debtId);
+                                setPaymentAmount(ob.amount);
+                              }}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                              <Coins className="w-3.5 h-3.5" />
+                              <span>Abonar</span>
+                            </button>
+                          </div>
                         )
                       ) : "isRecurrentTemplate" in ob ? (
                         <button
@@ -1098,6 +1105,27 @@ export default function SchedulePage() {
           </div>,
           document.body,
         )}
+
+      <DeferDebtDialog
+        open={deferDialogOpen}
+        onOpenChange={setDeferDialogOpen}
+        debtTitle={deferTargetObligation?.title || ""}
+        onConfirm={async (observation) => {
+          if (!deferTargetObligation) return false;
+          try {
+            await deferDebtMonth(
+              deferTargetObligation.debtId,
+              selectedMonth,
+              selectedYear,
+              observation
+            );
+            return true;
+          } catch (err) {
+            console.error(err);
+            return false;
+          }
+        }}
+      />
 
       <MonthCloseWizard month={selectedMonth} year={selectedYear} />
     </div>

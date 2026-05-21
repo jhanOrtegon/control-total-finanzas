@@ -24,7 +24,7 @@ export default function AuthLayout({
       {/* Clean subtle top-glow for dark/light mode */}
       <div className="absolute top-0 inset-x-0 h-80 bg-gradient-to-b from-indigo-500/[0.03] to-transparent blur-3xl pointer-events-none"></div>
 
-      <div className={`w-full max-w-md backdrop-blur-xl border rounded-3xl p-8 shadow-2xl relative z-10 transition-colors duration-300 ${
+      <div className={`w-full max-w-md backdrop-blur-xl border rounded-3xl p-5 sm:p-6 sm:py-5 shadow-2xl relative z-10 transition-colors duration-300 ${
         theme === "dark" ? "bg-slate-900/60 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"
       }`}>
         {children}

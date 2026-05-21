@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useFinance } from "@/providers/finance-provider";
 import { useTheme } from "@/providers/theme-provider";
+import { usePathname } from "next/navigation";
 import { formatCurrency } from "@/lib/utils";
 import { compareToPreviousSnapshot, getPreviousPeriod } from "@/lib/snapshot-comparison";
 import { isDeltaPositive } from "@/lib/snapshot-comparison";
@@ -41,6 +42,7 @@ interface MonthCloseWizardProps {
 
 export function MonthCloseWizard({ month, year, onClosed }: MonthCloseWizardProps) {
   const { theme } = useTheme();
+  const pathname = usePathname();
   const { getMonthlySummary, closeMonth, getSnapshot } = useFinance();
   const [step, setStep] = useState(0);
   const [notes, setNotes] = useState("");
@@ -159,9 +161,21 @@ export function MonthCloseWizard({ month, year, onClosed }: MonthCloseWizardProp
                   {item.href && !item.ok && (
                     <>
                       {" "}
-                      <Link href={item.href} className="underline font-black">
-                        Ir a corregir
-                      </Link>
+                      {pathname === item.href ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            document.getElementById("schedule-tabs")?.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="underline font-black cursor-pointer text-inherit"
+                        >
+                          Ir a corregir
+                        </button>
+                      ) : (
+                        <Link href={item.href} className="underline font-black">
+                          Ir a corregir
+                        </Link>
+                      )}
                     </>
                   )}
                 </span>

@@ -37,7 +37,7 @@ export function GoogleButton() {
       type="button"
       onClick={handleGoogleSignIn}
       disabled={loading}
-      className={`w-full border font-bold py-3 px-4 rounded-xl transition flex items-center justify-center gap-3 shadow-lg cursor-pointer disabled:opacity-50 ${
+      className={`w-full border font-bold py-2 px-4 rounded-xl transition flex items-center justify-center gap-3 shadow-lg cursor-pointer disabled:opacity-50 text-sm ${
         theme === "dark"
           ? "bg-slate-950 hover:bg-slate-900 border-slate-800 text-white"
           : "bg-white hover:bg-slate-50 border-slate-200 text-slate-800"

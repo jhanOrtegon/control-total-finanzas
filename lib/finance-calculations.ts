@@ -18,6 +18,80 @@ export function isDateInMonth(
   );
 }
 
+export function parseDateToYearMonth(
+  value: string | null,
+): { year: number; month: number } | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return null;
+  return {
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+  };
+}
+
+export function parseYearMonth(
+  value: string | null,
+): { year: number; month: number } | null {
+  if (!value) return null;
+  const match = value.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function monthIndex(year: number, month: number) {
+  return year * 12 + (month - 1);
+}
+
+export function getDebtDeferrals(debtId: string, expenses: Expense[]) {
+  return expenses.filter(
+    (e) => (e.title === `DEFER_DEBT:${debtId}` || e.title.startsWith(`DEFER_DEBT:${debtId}::`)) && e.status === "paid"
+  );
+}
+
+export function isDebtDeferredInMonth(debtId: string, expenses: Expense[], month: number, year: number) {
+  return expenses.some(
+    (e) => (e.title === `DEFER_DEBT:${debtId}` || e.title.startsWith(`DEFER_DEBT:${debtId}::`)) && e.status === "paid" && getExpenseDateInMonth(e, month, year)
+  );
+}
+
+export function isDebtApplicableToMonth(
+  debt: Debt,
+  targetMonth: number,
+  targetYear: number,
+  expenses: Expense[] = [],
+) {
+  if (debt.remaining_amount <= 0) return false;
+
+  const start =
+    parseYearMonth(debt.start_month) ||
+    parseDateToYearMonth(debt.due_date) ||
+    parseDateToYearMonth(debt.created_at);
+  const targetIdx = monthIndex(targetYear, targetMonth);
+
+  if (!start) return false;
+
+  const startIdx = monthIndex(start.year, start.month);
+  if (targetIdx < startIdx) return false;
+
+  const deferrals = getDebtDeferrals(debt.id, expenses);
+  // Only count deferrals that happened before or during the target month
+  const applicableDeferrals = deferrals.filter(e => {
+    const d = parseDateToYearMonth(e.paid_date || e.due_date);
+    if (!d) return false;
+    return monthIndex(d.year, d.month) <= targetIdx;
+  }).length;
+
+  const installments =
+    debt.installments && debt.installments > 0 ? debt.installments : 1;
+  const endIdx = startIdx + installments - 1 + applicableDeferrals;
+  
+  return targetIdx <= endIdx;
+}
+
 export function getExpenseDateInMonth(expense: Expense, month: number, year: number) {
   const dateStr =
     expense.status === "paid"
@@ -28,6 +102,10 @@ export function getExpenseDateInMonth(expense: Expense, month: number, year: num
 
 export function isDebtPaymentExpense(expense: Expense) {
   return expense.title.toLowerCase().startsWith("abono a deuda:");
+}
+
+export function isDeferDebtExpense(expense: Expense) {
+  return expense.title.startsWith("DEFER_DEBT:");
 }
 
 export function getRecurrentTemplates(expenses: Expense[]) {
@@ -78,7 +156,8 @@ export function computeMonthlySummary(
       (e) =>
         e.category !== "Ingresos" &&
         e.status === "paid" &&
-        getExpenseDateInMonth(e, month, year),
+        getExpenseDateInMonth(e, month, year) &&
+        !isDeferDebtExpense(e),
     )
     .reduce((acc, e) => acc + e.amount, 0);
 
@@ -90,7 +169,8 @@ export function computeMonthlySummary(
         e.category !== "Ingresos" &&
         getExpenseDateInMonth(e, month, year) &&
         !recurrentTitles.includes(e.title.toLowerCase()) &&
-        !isDebtPaymentExpense(e),
+        !isDebtPaymentExpense(e) &&
+        !isDeferDebtExpense(e),
     )
     .reduce((acc, e) => acc + e.amount, 0);
 
@@ -108,7 +188,9 @@ export function computeMonthlySummary(
     0,
   );
 
-  const activeDebts = debts.filter((d) => d.remaining_amount > 0);
+  const activeDebts = debts.filter((d) =>
+    isDebtApplicableToMonth(d, month, year, expenses)
+  );
   const monthlyDebtMinimums = activeDebts.reduce(
     (acc, d) => acc + d.minimum_payment,
     0,
@@ -150,6 +232,8 @@ export function computeMonthlySummary(
   }
 
   for (const d of activeDebts) {
+    if (isDebtDeferredInMonth(d.id, expenses, month, year)) continue;
+
     const paid = debtPaymentsInMonth > 0 &&
       expenses.some(
         (e) =>
@@ -169,7 +253,8 @@ export function computeMonthlySummary(
       e.category !== "Ingresos" &&
       getExpenseDateInMonth(e, month, year) &&
       !recurrentTitles.includes(e.title.toLowerCase()) &&
-      !isDebtPaymentExpense(e),
+      !isDebtPaymentExpense(e) &&
+      !isDeferDebtExpense(e),
   );
   pendingObligationsCount += oneTimePending.length;
 

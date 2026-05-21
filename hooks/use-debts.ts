@@ -395,6 +395,75 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     [currentYearMonth],
   );
 
+  const deferDebtMonth = async (debtId: string, month: number, year: number, observation: string) => {
+    if (!userId) return false;
+    return withLoading(async () => {
+      try {
+        const debt = debts.find((d) => d.id === debtId);
+        if (!debt) return false;
+
+        const padMonth = month < 10 ? `0${month}` : month;
+        const deferDate = `${year}-${padMonth}-15`;
+
+        const { data, error } = await insforge.database
+          .from("expenses")
+          .insert([
+            {
+              user_id: userId,
+              title: `DEFER_DEBT:${debtId}::${observation.trim()}`,
+              amount: 0,
+              category: "Otros",
+              type: "one-time",
+              status: "paid",
+              paid_date: new Date(deferDate).toISOString(),
+              due_date: deferDate,
+            },
+          ])
+          .select()
+          .single();
+
+        if (error) throw error;
+        
+        toast.success(`Mes aplazado para la deuda: ${debt.title}`);
+        broadcastMutation(userId, "INSERT_expense", data);
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
+        }
+        return true;
+      } catch (err: any) {
+        console.error("Error deferring debt:", err);
+        toast.error("Error al aplazar la cuota");
+        return false;
+      }
+    }, "Aplazando cuota...");
+  };
+
+  const undoDeferDebtMonth = async (debtId: string, deferExpenseId: string) => {
+    if (!userId) return false;
+    return withLoading(async () => {
+      try {
+        const { error } = await insforge.database
+          .from("expenses")
+          .delete()
+          .eq("id", deferExpenseId)
+          .eq("user_id", userId);
+
+        if (error) throw error;
+        
+        toast.success(`Aplazamiento revertido`);
+        broadcastMutation(userId, "DELETE_expense", { id: deferExpenseId });
+        if (onPaymentSuccess) {
+          onPaymentSuccess();
+        }
+        return true;
+      } catch (err: any) {
+        console.error("Error undoing defer:", err);
+        toast.error("Error al revertir el aplazamiento");
+        return false;
+      }
+    }, "Revirtiendo aplazamiento...");
+  };
+
   return {
     debts,
     loading,
@@ -403,6 +472,8 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     deleteDebt,
     recordDebtPayment,
     undoDebtPayment,
+    deferDebtMonth,
+    undoDeferDebtMonth,
     refetchDebts: fetchDebts,
     applyRealtimeDebt,
   };

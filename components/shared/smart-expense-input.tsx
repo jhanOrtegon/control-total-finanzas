@@ -39,6 +39,7 @@ export function SmartExpenseInput() {
         category: data.category,
         type: "one-time",
         status: "paid",
+        due_date: null,
         target_month: null,
       });
 

@@ -112,7 +112,6 @@ export function useExpenses(userId: string | undefined) {
     const tempExpense: Expense = {
       id: `temp-${Date.now()}`,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
       ...newPayload,
       amount: Number(newPayload.amount)
     };

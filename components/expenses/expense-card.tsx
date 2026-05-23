@@ -70,7 +70,7 @@ export function ExpenseCard({
 
       {/* Tarjeta Principal (Deslizable) */}
       <motion.div
-        {...bind()}
+        {...(bind() as object)}
         animate={controls}
         style={{ x }}
         className={`border rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition shadow-md relative group \${

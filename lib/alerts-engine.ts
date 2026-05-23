@@ -117,6 +117,10 @@ export function buildDueAlerts(
       targetDue = new Date(today.getFullYear(), today.getMonth() + 1, day);
     }
 
+    if (targetDue.getTime() < originalDue.getTime()) {
+      targetDue = new Date(originalDue);
+    }
+
     const dueDay = startOfDay(targetDue);
     if (dueDay > limit) continue;
 

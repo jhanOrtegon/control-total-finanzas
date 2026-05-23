@@ -25,6 +25,7 @@ import {
   Bell,
   FileBarChart,
   Activity,
+  PiggyBank,
 } from "lucide-react";
 
 export function Sidebar() {
@@ -40,14 +41,15 @@ export function Sidebar() {
   const navGroups = [
     {
       title: "General",
-      items: [{ href: "/", label: "Dashboard Deudas", icon: BarChart3 }],
+      items: [{ href: "/", label: "Dashboard", icon: BarChart3 }],
     },
     {
       title: "Finanzas y Control",
       items: [
         { href: "/expenses", label: "Control de Gastos", icon: Layers },
-        { href: "/debts", label: "Mis Deudas Activas", icon: ShieldAlert },
+        { href: "/debts", label: "Mis Deudas", icon: ShieldAlert },
         { href: "/budgets", label: "Sobres por Categoría", icon: Wallet },
+        { href: "/savings", label: "Ahorro y Estadísticas", icon: PiggyBank },
       ],
     },
     {

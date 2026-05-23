@@ -9,6 +9,8 @@ import { useTheme } from "@/providers/theme-provider";
 import { FinanceProvider } from "@/providers/finance-provider";
 import { FinancePeriodProvider } from "@/providers/finance-period-provider";
 import { NovaChatbot } from "@/components/ui/nova-chatbot";
+import { CommandPalette } from "@/components/shared/command-palette";
+import { useRouter } from "next/navigation";
 
 export default function DashboardLayout({
   children,
@@ -17,6 +19,13 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const { theme } = useTheme();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -64,6 +73,7 @@ export default function DashboardLayout({
         </div>
 
         <NovaChatbot />
+        <CommandPalette />
       </div>
         </FinancePeriodProvider>
       </Suspense>

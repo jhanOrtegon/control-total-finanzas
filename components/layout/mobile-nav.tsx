@@ -19,6 +19,7 @@ import {
   Settings,
   Wallet,
   Activity,
+  PiggyBank,
 } from "lucide-react";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -33,6 +34,7 @@ const navGroups = [
       { href: "/expenses", label: "Gastos", icon: Layers },
       { href: "/debts", label: "Deudas", icon: ShieldAlert },
       { href: "/budgets", label: "Sobres", icon: Wallet },
+      { href: "/savings", label: "Ahorros", icon: PiggyBank },
     ],
   },
   {

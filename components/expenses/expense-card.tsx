@@ -92,12 +92,12 @@ export function ExpenseCard({
               <h4 className={`text-sm font-bold group-hover:text-indigo-500 transition \${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 {expense.title}
               </h4>
-              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 \${
+              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
                 expense.type === "recurrent"
                   ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                   : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
               }`}>
-                {expense.type === "recurrent" ? "Mensual" : "Gasto Variable"}
+                {expense.type === "recurrent" ? "Gasto Fijo" : "Gasto Variable"}
               </span>
             </div>
 

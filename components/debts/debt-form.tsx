@@ -24,7 +24,7 @@ interface DebtFormProps {
     due_date: string | null;
     installments: number;
     start_month: string | null;
-  }) => Promise<void>;
+  }) => Promise<boolean | void>;
   onCancelEdit: () => void;
 }
 
@@ -51,10 +51,10 @@ export function DebtForm({
   const [minimumPayment, setMinimumPayment] = useState<number | "">("");
   const [dueDateDay, setDueDateDay] = useState("15");
   const [installments, setInstallments] = useState("1");
-  const [startMonth, setStartMonth] = useState("");
-  const [autoCalculate, setAutoCalculate] = useState(false);
-
   const currentMonthValue = getCurrentMonthValue();
+  const [startMonth, setStartMonth] = useState(currentMonthValue);
+  const [calcMode, setCalcMode] = useState<"installments" | "payment">("installments");
+
   const baseDueMonth = startMonth || currentMonthValue;
 
   const monthOptions = Array.from({ length: 12 }, (_, index) => {
@@ -79,25 +79,27 @@ export function DebtForm({
       setMinimumPayment(editingDebt.minimum_payment);
       setDueDateDay(editingDebt.due_date ? editingDebt.due_date.split("-")[2] || "15" : "15");
       setInstallments(editingDebt.installments?.toString() || "1");
-      setStartMonth(editingDebt.start_month || "");
-      setAutoCalculate(false);
+      setStartMonth(editingDebt.start_month || currentMonthValue);
+      setCalcMode("installments");
     } else {
       resetForm();
     }
   }, [editingDebt, currentMonthValue]);
 
-  // Auto-calculate minimum payment when installments change
+  // Bidirectional auto-calculation
   useEffect(() => {
-    if (autoCalculate && installments && typeof remainingAmount === 'number') {
-      const numInstallments = parseInt(installments);
-      if (numInstallments > 0 && remainingAmount > 0) {
-        const calculated = remainingAmount / numInstallments;
-        setMinimumPayment(calculated);
+    if (typeof remainingAmount === "number" && remainingAmount > 0) {
+      if (calcMode === "installments") {
+        const inst = Math.max(1, parseInt(installments) || 1);
+        setMinimumPayment(remainingAmount / inst);
+      } else if (calcMode === "payment") {
+        if (typeof minimumPayment === "number" && minimumPayment > 0) {
+          const inst = Math.max(1, Math.ceil(remainingAmount / minimumPayment));
+          setInstallments(inst.toString());
+        }
       }
     }
-  }, [installments, remainingAmount, autoCalculate]);
-
-  // removed minDueDate effect
+  }, [remainingAmount, installments, minimumPayment, calcMode]);
 
   const resetForm = () => {
     setTitle("");
@@ -106,14 +108,15 @@ export function DebtForm({
     setMinimumPayment("");
     setDueDateDay("15");
     setInstallments("1");
-    setStartMonth("");
-    setAutoCalculate(false);
+    setStartMonth(currentMonthValue);
+    setCalcMode("installments");
   };
 
-  const handleInstallmentsChange = (value: string) => {
-    setInstallments(value);
-    if (value && typeof remainingAmount === 'number') {
-      setAutoCalculate(true);
+  const handleTotalAmountChange = (val: number | "") => {
+    setTotalAmount(val);
+    // Auto-fill remaining amount if it's empty or equals the previous total amount
+    if (val !== "" && (remainingAmount === "" || remainingAmount === totalAmount)) {
+      setRemainingAmount(val);
     }
   };
 
@@ -135,7 +138,7 @@ export function DebtForm({
     const dayPad = dDay < 10 ? `0${dDay}` : dDay;
     const computedDueDate = `${baseDueMonth}-${dayPad}`;
 
-    await onSave({
+    const success = await onSave({
       title,
       total_amount: total,
       remaining_amount: remaining,
@@ -145,7 +148,7 @@ export function DebtForm({
       start_month: startMonth || null,
     });
 
-    if (!editingDebt) {
+    if (success !== false && !editingDebt) {
       resetForm();
     }
   };
@@ -208,11 +211,11 @@ export function DebtForm({
         {/* Total Amount */}
         <div>
           <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-            Monto Inicial Prestado
+            Monto Inicial
           </label>
           <CurrencyInput
             value={totalAmount === "" ? undefined : totalAmount}
-            onChange={(val) => setTotalAmount(val)}
+            onChange={handleTotalAmountChange}
             placeholder="Monto total original..."
             className={inputClass}
           />
@@ -231,65 +234,75 @@ export function DebtForm({
           />
         </div>
 
-        {/* Installments */}
-        <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-            Número de Cuotas
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="1"
-              step="1"
-              required
-              placeholder="Ej. 12, 24, 36..."
-              value={installments}
-              onChange={(e) => handleInstallmentsChange(e.target.value)}
-              onBlur={() => {
-                if (!installments || Number(installments) <= 0) {
-                  setInstallments("1");
-                }
-              }}
-              onFocus={(e) => e.target.select()}
-              className={inputClass}
-            />
-            {installments && remainingAmount && (
-              <div className="shrink-0 flex items-center gap-1 text-xs text-emerald-500 font-bold">
-                <Calculator className="w-3.5 h-3.5" />
-                <span>Auto</span>
-              </div>
-            )}
+        {/* Payment Strategy Block */}
+        <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4">
+          <div>
+            <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
+              Estrategia de Amortización
+            </label>
+            <div className="flex bg-slate-200/50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCalcMode("installments")}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  calcMode === "installments"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
+              >
+                Fijar N° Cuotas
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalcMode("payment")}
+                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  calcMode === "payment"
+                    ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
+              >
+                Fijar Cuota Fija
+              </button>
+            </div>
           </div>
-          {installments && typeof remainingAmount === "number" && (
-            <p className="text-[10px] text-slate-500 mt-1 font-medium">
-              Cuota calculada:{" "}
-              {(remainingAmount / parseInt(installments || "1")).toLocaleString(
-                "es-CO",
-                {
-                  style: "currency",
-                  currency: "COP",
-                  maximumFractionDigits: 0,
-                },
-              )}
-              /mes
-            </p>
-          )}
-        </div>
 
-        {/* Minimum Payment */}
-        <div>
-          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
-            Pago Mínimo Mensual
-          </label>
-          <CurrencyInput
-            value={minimumPayment === "" ? undefined : minimumPayment}
-            onChange={(val) => {
-              setMinimumPayment(val);
-              setAutoCalculate(false);
-            }}
-            placeholder="Cuota fija o amortización mínima..."
-            className={inputClass}
-          />
+          <div className="grid grid-cols-2 gap-4">
+            {/* Installments */}
+            <div>
+              <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                N° de Cuotas
+              </label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                required
+                disabled={calcMode === "payment"}
+                placeholder="Ej. 12, 24..."
+                value={installments}
+                onChange={(e) => setInstallments(e.target.value)}
+                onBlur={() => {
+                  if (!installments || Number(installments) <= 0) setInstallments("1");
+                }}
+                onFocus={(e) => e.target.select()}
+                className={`${inputClass} ${calcMode === "payment" ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-950/40" : ""}`}
+              />
+            </div>
+
+            {/* Minimum Payment */}
+            <div>
+              <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                Cuota Mensual
+              </label>
+              <CurrencyInput
+                disabled={calcMode === "installments"}
+                value={minimumPayment === "" ? undefined : minimumPayment}
+                onChange={(val) => setMinimumPayment(val)}
+                placeholder="0"
+                className={`${inputClass} ${calcMode === "installments" ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-950/40" : ""}`}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Start Month */}
@@ -299,9 +312,7 @@ export function DebtForm({
           </label>
           <Select
             value={startMonth}
-            onValueChange={(val) =>
-              setStartMonth(val === "__default__" ? "" : (val || ""))
-            }
+            onValueChange={(val) => setStartMonth(val || currentMonthValue)}
           >
             <SelectTrigger
               className={`w-full h-10 rounded-xl ${
@@ -310,12 +321,9 @@ export function DebtForm({
                   : "bg-slate-50 border-slate-200 text-slate-900"
               }`}
             >
-              <SelectValue placeholder="Usar fecha de creación (por defecto)" />
+              <SelectValue placeholder="Mes de inicio" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__default__">
-                Usar fecha de creación (por defecto)
-              </SelectItem>
               {monthOptions.map((month) => (
                 <SelectItem key={month.value} value={month.value}>
                   {month.label} {month.year}
@@ -323,11 +331,6 @@ export function DebtForm({
               ))}
             </SelectContent>
           </Select>
-          {!startMonth && (
-            <p className="text-[10px] text-slate-500 mt-1 font-medium">
-              Si no se especifica, se usará la fecha de creación de la deuda.
-            </p>
-          )}
         </div>
 
         {/* Due Date */}

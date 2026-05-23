@@ -9,16 +9,11 @@ import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 import { CurrencyInput } from "@/components/ui/currency-input";
 
 interface ExpenseFormProps {
-  editingExpense: Expense | null;
-  onSave: (payload: {
-    title: string;
-    amount: number;
-    category: string;
-    type: "recurrent" | "one-time";
-    status: "pending" | "paid";
-    due_date: string | null;
-  }) => Promise<void>;
-  onCancelEdit: () => void;
+  editingExpense?: Expense | null;
+  onSave: (
+    payload: Omit<Expense, "id" | "user_id" | "created_at" | "paid_date">,
+  ) => Promise<boolean | void>;
+  onCancelEdit?: () => void;
 }
 
 export function ExpenseForm({
@@ -92,7 +87,7 @@ export function ExpenseForm({
 
     const statusToSave: "pending" | "paid" = editingExpense ? status : "pending";
 
-    await onSave({
+    const success = await onSave({
       title,
       amount: val,
       category,
@@ -101,7 +96,7 @@ export function ExpenseForm({
       due_date: null,
     });
 
-    if (!editingExpense) {
+    if (success !== false && !editingExpense) {
       resetForm();
     }
   };
@@ -226,7 +221,7 @@ export function ExpenseForm({
             ? "bg-slate-950/60 border-slate-800 text-slate-300"
             : "bg-slate-50 border-slate-200 text-slate-600"
         }`}>
-          Tipo de gasto fijo para esta vista: <span className="font-black">Mensual Recurrente</span>.
+          Tipo de gasto para esta vista: <span className="font-black">Gasto Fijo Mensual</span>.
         </div>
 
         {!editingExpense && (

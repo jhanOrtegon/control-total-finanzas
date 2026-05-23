@@ -51,7 +51,7 @@ function buildTips(summary: MonthlyFinanceSummary): Tip[] {
     tips.push({
       id: "pending",
       title: `${summary.pendingObligationsCount} obligación(es) pendiente(s)`,
-      body: "Marca facturas recurrentes y cuotas de deuda en el cronograma para mantener trazabilidad del mes.",
+      body: "Marca gastos fijos y cuotas de deuda en el cronograma para mantener trazabilidad del mes.",
       href: "/schedule",
       cta: "Ir al cronograma",
       tone: "info",

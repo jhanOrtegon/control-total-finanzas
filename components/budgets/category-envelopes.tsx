@@ -13,6 +13,7 @@ import {
 import { useFinance } from "@/providers/finance-provider";
 import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { useTheme } from "@/providers/theme-provider";
+import { toast } from "sonner";
 import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
 import { getCategoryEmoji } from "@/lib/constants";
 import { spentByCategoryInMonth } from "@/lib/financial-events";
@@ -56,9 +57,57 @@ export function CategoryEnvelopes() {
   const monthlyBudget = budget?.monthly_budget ?? 0;
   const spendablePool = getSpendablePool(income, monthlyBudget, savingsGoal);
 
+  const DEFAULT_PERCENTAGES: Record<string, number> = {
+    Vivienda: 28,
+    Servicios: 12,
+    Comida: 18,
+    Transporte: 12,
+    Entretenimiento: 10,
+    Compras: 10,
+    Otros: 10,
+  };
+
   const [drafts, setDrafts] = useState<Record<string, number | "">>({});
   const [sortMode, setSortMode] = useState<SortMode>("usage");
   const [savingAll, setSavingAll] = useState(false);
+  const [weights, setWeights] = useState<Record<string, number>>({});
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+
+  // Load custom allocation weights on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("envelope_weights_pct");
+    if (saved) {
+      try {
+        setWeights(JSON.parse(saved));
+        return;
+      } catch (e) {}
+    }
+    setWeights(DEFAULT_PERCENTAGES);
+  }, []);
+
+  const handleWeightChange = (cat: string, val: number) => {
+    setWeights((prev) => ({
+      ...prev,
+      [cat]: val,
+    }));
+  };
+
+  const saveWeights = () => {
+    localStorage.setItem("envelope_weights_pct", JSON.stringify(weights));
+    toast.success("✅ Reglas de reparto guardadas correctamente");
+    setIsConfigOpen(false);
+  };
+
+  const totalPct = Object.values(weights).reduce((a, b) => a + Number(b || 0), 0);
+
+  const getCalculatedLimits = (pool: number) => {
+    const result: Record<string, number> = {};
+    for (const cat of SPEND_CATEGORIES) {
+      const pct = weights[cat] ?? 0;
+      result[cat] = Math.round(pool * (pct / 100));
+    }
+    return result;
+  };
 
   useEffect(() => {
     const next: Record<string, number | ""> = {};
@@ -110,18 +159,14 @@ export function CategoryEnvelopes() {
 
   const applySuggested = async () => {
     if (spendablePool <= 0) return;
-    const suggested = suggestEnvelopeLimits(spendablePool);
-    setDrafts(
-      Object.fromEntries(SPEND_CATEGORIES.map((c) => [c, suggested[c] ?? 0])),
-    );
-    await applySuggestedEnvelopes(spendablePool);
+    const calculated = getCalculatedLimits(spendablePool);
+    setDrafts(calculated);
+    await batchUpsertLimits(calculated);
   };
 
   const copyFromDrafts = () => {
-    const suggested = suggestEnvelopeLimits(spendablePool);
-    setDrafts(
-      Object.fromEntries(SPEND_CATEGORIES.map((c) => [c, suggested[c] ?? 0])),
-    );
+    const calculated = getCalculatedLimits(spendablePool);
+    setDrafts(calculated);
   };
 
   const copyFromPreviousMonth = async () => {
@@ -192,7 +237,7 @@ export function CategoryEnvelopes() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black cursor-pointer disabled:opacity-40"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Aplicar reparto sugerido
+            Aplicar reparto automático
           </button>
           <button
             type="button"
@@ -201,7 +246,7 @@ export function CategoryEnvelopes() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-[10px] font-black cursor-pointer disabled:opacity-40"
           >
             <Copy className="w-3.5 h-3.5" />
-            Previsualizar sugerido
+            Previsualizar reparto
           </button>
           <button
             type="button"
@@ -214,6 +259,13 @@ export function CategoryEnvelopes() {
           </button>
           <button
             type="button"
+            onClick={() => setIsConfigOpen(!isConfigOpen)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-indigo-400 text-indigo-600 dark:text-indigo-400 text-[10px] font-black cursor-pointer"
+          >
+            ⚙️ Reglas de Reparto ({totalPct}%)
+          </button>
+          <button
+            type="button"
             onClick={saveAll}
             disabled={savingAll}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[10px] font-black cursor-pointer disabled:opacity-40"
@@ -222,6 +274,50 @@ export function CategoryEnvelopes() {
             Guardar todos
           </button>
         </div>
+
+        {isConfigOpen && (
+          <div className="p-5 border rounded-2xl bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div>
+              <h4 className="text-xs font-black uppercase text-indigo-500">Configuración de Pesos para Distribución</h4>
+              <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Asigna qué porcentaje del pool disponible quieres asignar automáticamente a cada sobre. La suma debe dar 100%.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {SPEND_CATEGORIES.map((cat) => (
+                <div key={cat} className="space-y-1">
+                  <label className="block text-[9px] uppercase font-bold text-slate-500 tracking-wider">
+                    {getCategoryEmoji(cat)} {cat}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={weights[cat] === undefined ? "" : weights[cat]}
+                      onChange={(e) => handleWeightChange(cat, Number(e.target.value))}
+                      className="w-full text-xs font-bold border rounded-lg py-1.5 px-2.5 pr-6 focus:outline-none bg-white dark:bg-slate-950 border-slate-250 dark:border-slate-800"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400 pointer-events-none">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t dark:border-slate-800 text-[11px] font-bold">
+              <span className={totalPct === 100 ? "text-emerald-500" : "text-amber-500"}>
+                Suma total de reglas: {totalPct}% {totalPct === 100 ? "✓ Válido" : `(Debe ser 100%)`}
+              </span>
+              <button
+                type="button"
+                onClick={saveWeights}
+                disabled={totalPct !== 100}
+                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-black cursor-pointer transition"
+              >
+                Guardar Reglas
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <EnvelopeAllocationChart rows={rows} spendablePool={spendablePool} />

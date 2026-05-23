@@ -15,9 +15,19 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { useConfirm } from "@/providers/confirm-provider";
 import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2 } from "lucide-react";
 import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
+import { toast } from "sonner";
 
 const ITEMS_PER_PAGE = 6;
 const QUICK_AMOUNTS = [5_000, 10_000, 20_000, 50_000, 100_000, 200_000];
+
+const QUICK_CHIPS = [
+  { emoji: "🍕", title: "Comida Rápida", amount: 25000, category: "Comida" },
+  { emoji: "🚗", title: "Taxi / Uber", amount: 15000, category: "Transporte" },
+  { emoji: "🛒", title: "Supermercado", amount: 80000, category: "Comida" },
+  { emoji: "☕", title: "Café / Merienda", amount: 8000, category: "Comida" },
+  { emoji: "⛽", title: "Gasolina", amount: 30000, category: "Transporte" },
+  { emoji: "🎬", title: "Entretenimiento", amount: 20000, category: "Entretenimiento" },
+];
 
 export default function ExpensesPage() {
   const { expenses, addExpense, updateExpense, deleteExpense } = useFinance();
@@ -36,6 +46,16 @@ export default function ExpensesPage() {
   const [txMarkAsPaid, setTxMarkAsPaid] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
+  const handleQuickChip = (title: string, amount: number, category: string) => {
+    setTxTitle(title);
+    setTxAmount(amount);
+    setTxCategory(category);
+    setTxType("expense");
+    toast.info(`📝 Rellenado: ${title}`, {
+      description: `Monto: ${formatCurrency(amount)} en ${category}`,
+    });
+  };
+
   const today = new Date();
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
@@ -47,19 +67,21 @@ export default function ExpensesPage() {
         description: "¿Estás seguro de que deseas guardar los cambios en este movimiento?",
         confirmLabel: "Guardar Cambios",
       });
-      if (!ok) return;
+      if (!ok) return false;
 
       await updateExpense(editingExpense.id, payload);
       setEditingExpense(null);
+      return true;
     } else {
       const ok = await confirm({
         title: "Crear plantilla",
-        description: "¿Deseas crear esta nueva plantilla de gasto recurrente?",
+        description: "¿Deseas crear esta nueva plantilla de gasto fijo?",
         confirmLabel: "Crear",
       });
-      if (!ok) return;
+      if (!ok) return false;
 
       await addExpense(payload);
+      return true;
     }
   };
 
@@ -163,7 +185,7 @@ export default function ExpensesPage() {
                 : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
-            Recurrencias
+            Gastos Fijos
           </button>
           <button
             type="button"
@@ -181,7 +203,7 @@ export default function ExpensesPage() {
         {/* Expenses List */}
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-            <span>{activeTab === "recurring" ? "Lista de Recurrencias" : `Historial del Mes (${today.toLocaleString("es-CO", { month: "long" })})`}</span>
+            <span>{activeTab === "recurring" ? "Lista de Gastos Fijos" : `Historial del Mes (${today.toLocaleString("es-CO", { month: "long" })})`}</span>
             <span className="text-xs bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-indigo-500 px-2 py-0.5 rounded-full font-black">
               {activeTab === "recurring" ? recurrentTemplates.length : filteredMonthTransactions.length}
             </span>
@@ -221,8 +243,8 @@ export default function ExpensesPage() {
           {activeTab === "recurring" && recurrentTemplates.length === 0 ? (
             <div className="border border-dashed rounded-3xl p-12 text-center bg-white dark:bg-slate-900/20 border-slate-200 dark:border-slate-800">
               <CreditCard className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
-              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">No hay recurrencias registradas</h3>
-              <p className="text-xs text-slate-500 mt-1">Crea tu primera plantilla mensual en el formulario lateral.</p>
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-300">No hay gastos fijos registrados</h3>
+              <p className="text-xs text-slate-500 mt-1">Crea tu primer gasto fijo mensual en el formulario lateral.</p>
             </div>
           ) : activeTab === "month" && currentMonthTransactions.length === 0 ? (
             <div className="border border-dashed rounded-3xl p-12 text-center bg-white dark:bg-slate-900/20 border-slate-200 dark:border-slate-800">
@@ -331,6 +353,23 @@ export default function ExpensesPage() {
                   <Plus className="w-5 h-5" />
                 </div>
                 <h3 className="text-base font-bold">Registrar Movimiento del Mes</h3>
+              </div>
+
+              {/* Quick Log Chips */}
+              <div className="space-y-2 pt-1 border-b border-slate-100 dark:border-slate-800 pb-3">
+                <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider block">Gastos Frecuentes</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {QUICK_CHIPS.map((chip) => (
+                    <button
+                      key={chip.title}
+                      type="button"
+                      onClick={() => handleQuickChip(chip.title, chip.amount, chip.category)}
+                      className="px-2.5 py-1 rounded-xl text-[10px] font-bold border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50/10 transition cursor-pointer"
+                    >
+                      {chip.emoji} {chip.title} (${chip.amount / 1000}K)
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <form onSubmit={handleCreateMonthlyTransaction} className="space-y-4">

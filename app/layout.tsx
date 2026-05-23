@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Control Total Finanzas - Libertad y Control del Presupuesto",
-  description: "Supera tus deudas, gestiona tus egresos recurrentes y monitorea tu relación deudas-ingreso de forma profesional.",
+  description: "Supera tus deudas, gestiona tus gastos fijos y monitorea tu relación deudas-ingreso de forma profesional.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -41,9 +41,9 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: "/icon-192x192.png",
-    shortcut: "/icon-192x192.png",
-    apple: "/icon-192x192.png",
+    icon: "/finanzas-icon.svg",
+    shortcut: "/finanzas-icon.svg",
+    apple: "/finanzas-icon.svg",
   },
 };
 

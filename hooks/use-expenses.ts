@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useOptimistic } from "react";
+import { useState, useEffect, useCallback, useOptimistic, startTransition } from "react";
 import { insforge } from "@/lib/insforge";
 import { Expense } from "@/types";
 import { toast } from "sonner";
@@ -115,7 +115,9 @@ export function useExpenses(userId: string | undefined) {
       ...newPayload,
       amount: Number(newPayload.amount)
     };
-    addOptimisticExpense(tempExpense);
+    startTransition(() => {
+      addOptimisticExpense(tempExpense);
+    });
 
     try {
       const { data, error } = await insforge.database

@@ -1,41 +1,27 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import { useFinance } from "@/providers/finance-provider";
 import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { HealthAdvisor } from "@/components/dashboard/health-advisor";
-import { ProgressTrackers } from "@/components/dashboard/progress-trackers";
-import { ImprovementTips } from "@/components/dashboard/improvement-tips";
 import { DueAlerts } from "@/components/dashboard/due-alerts";
 import { DaySummaryBanner } from "@/components/dashboard/day-summary-banner";
-import { MonthComparisonCard } from "@/components/month-close/month-comparison-card";
-import { AlertCenter } from "@/components/alerts/alert-center";
-import { BudgetPaceCard } from "@/components/charts/budget-pace-card";
-import { EnvelopeSummary } from "@/components/budgets/envelope-summary";
 import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
 import { ModuleHubLinks } from "@/components/shared/module-hub-links";
-import { CategoryDonutChart } from "@/components/charts/category-donut-chart";
-import { SavingsGoalCard } from "@/components/dashboard/savings-goal-card";
-import { QuickAddModal } from "@/components/shared/quick-add-modal";
-import { SmartExpenseInput } from "@/components/shared/smart-expense-input";
 import { formatCurrency } from "@/lib/utils";
 import {
   DollarSign,
   TrendingDown,
-  Coins,
   CheckCircle,
   AlertTriangle,
   ArrowUpRight,
-  FileBarChart,
-  Calendar,
   Download,
-  PlusCircle,
+  PiggyBank,
 } from "lucide-react";
 
 export default function OverviewPage() {
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const { month, year, isCurrentMonth, linkWithPeriod } = useFinancePeriod();
   const { budget, getMonthlySummary, expenses } = useFinance();
 
@@ -72,7 +58,7 @@ export default function OverviewPage() {
       `"${e.title.replace(/"/g, '""')}"`,
       e.amount,
       e.category,
-      e.type === "recurrent" ? "Recurrente" : "Único",
+      e.type === "recurrent" ? "Fijo" : "Único",
       e.status === "paid" ? "Pagado" : "Pendiente",
       e.paid_date || e.due_date || e.created_at || "",
     ]);
@@ -97,12 +83,9 @@ export default function OverviewPage() {
     totalIncome,
     monthSpent,
     savingsGoal,
-    monthlyDebtMinimums,
     totalOutstandingDebt,
     totalInitialDebt,
-    totalPaidOffDebt,
     realAvailableCash,
-    pendingObligationsCount,
     extraIncome,
   } = summary;
 
@@ -127,13 +110,8 @@ export default function OverviewPage() {
         {isCurrentMonth && <DaySummaryBanner />}
         <PoolBalanceBanner dismissible />
         <DueAlerts />
-        <MonthComparisonCard month={month} year={year} />
       </div>
 
-      {/* AI Smart Input */}
-      <div className="col-span-1 md:col-span-6 xl:col-span-12 mb-2">
-        <SmartExpenseInput />
-      </div>
 
       {/* KPIs Principales - Fila 1 */}
       <div className="col-span-1 md:col-span-3 xl:col-span-3">
@@ -195,62 +173,6 @@ export default function OverviewPage() {
 
       <div className="col-span-1 md:col-span-3 xl:col-span-3">
         <StatCard
-          title="Obligaciones Pendientes"
-          value={String(pendingObligationsCount)}
-          icon={<Calendar className="w-4 h-4 text-indigo-500" />}
-          footer={
-            pendingObligationsCount > 0 ? (
-              <Link href="/schedule" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
-                Ver en cronograma →
-              </Link>
-            ) : (
-              <span className="text-emerald-500 font-bold">Mes al día en obligaciones</span>
-            )
-          }
-        />
-      </div>
-
-      {/* Bloque Central Izquierdo: Health Advisor y Sobres */}
-      <div className="col-span-1 md:col-span-6 xl:col-span-8 flex flex-col gap-5">
-        <div className="h-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all">
-          <HealthAdvisor
-            monthlyIncome={totalIncome}
-            monthlyBudget={budgetLimit}
-            monthlySavingsGoal={savingsGoal}
-            totalSpent={monthSpent}
-            realAvailableCash={realAvailableCash}
-          />
-        </div>
-        <div className="h-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all">
-          <EnvelopeSummary month={month} year={year} compact />
-        </div>
-      </div>
-
-      {/* Bloque Central Derecho: Gráfico Donut y Ahorro */}
-      <div className="col-span-1 md:col-span-6 xl:col-span-4 flex flex-col gap-5">
-        <div className="flex-1 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all">
-          <CategoryDonutChart month={month} year={year} />
-        </div>
-        <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all">
-          <SavingsGoalCard />
-        </div>
-      </div>
-
-      {/* Ritmo y Alertas */}
-      <div className="col-span-1 md:col-span-6 xl:col-span-6">
-        <div className="h-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all">
-          <AlertCenter month={month} year={year} compact />
-        </div>
-      </div>
-      <div className="col-span-1 md:col-span-6 xl:col-span-6">
-        <div className="h-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all">
-          <BudgetPaceCard month={month} year={year} />
-        </div>
-      </div>
-
-      {/* Deudas y Trackers */}
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
-        <StatCard
           title="Deuda Restante"
           value={formatCurrency(totalOutstandingDebt)}
           variant={totalOutstandingDebt > 0 ? "danger" : "success"}
@@ -260,34 +182,16 @@ export default function OverviewPage() {
           footer={<span>{debtPaidPct.toFixed(0)}% amortizado</span>}
         />
       </div>
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
-        <StatCard
-          title="Cuota Deudas"
-          value={formatCurrency(monthlyDebtMinimums)}
-          variant="warning"
-          accentColor="amber"
-          icon={<Coins className="w-4 h-4" />}
-          footer={<span>Mínimo mensual</span>}
-        />
-      </div>
-      <div className="col-span-1 md:col-span-6 xl:col-span-6">
-        <div className="h-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-elegant-hover transition-all flex items-center">
-          <div className="w-full">
-            <ProgressTrackers
-              monthlyIncome={summary.baseIncome}
-              monthlyDebtMinimums={monthlyDebtMinimums}
-              totalOutstandingDebt={totalOutstandingDebt}
-              totalInitialDebt={totalInitialDebt}
-            />
-          </div>
-        </div>
-      </div>
 
-      {/* Tips */}
-      <div className="col-span-1 md:col-span-6 xl:col-span-12">
-        <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/30 rounded-3xl shadow-sm">
-          <ImprovementTips summary={summary} />
-        </div>
+      {/* AI Health Advisor - Full Width */}
+      <div className="col-span-1 md:col-span-6 xl:col-span-12 flex flex-col gap-5">
+        <HealthAdvisor
+          monthlyIncome={totalIncome}
+          monthlyBudget={budgetLimit}
+          monthlySavingsGoal={savingsGoal}
+          totalSpent={monthSpent}
+          realAvailableCash={realAvailableCash}
+        />
       </div>
 
       {/* Modulos y Acciones Rapidas */}
@@ -297,13 +201,13 @@ export default function OverviewPage() {
 
       <div className="col-span-1 md:col-span-6 xl:col-span-6">
         <Link
-          href={linkWithPeriod("/reports")}
+          href={linkWithPeriod("/savings")}
           className="group h-full border rounded-3xl p-6 flex flex-col justify-center gap-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-elegant-hover transition-all duration-300 hover:-translate-y-0.5"
         >
-          <FileBarChart className="w-8 h-8 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform" />
+          <PiggyBank className="w-8 h-8 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform" />
           <div>
-            <span className="text-sm font-black block">Informe detallado del mes</span>
-            <span className="text-xs text-slate-500 font-semibold">Ver análisis completo y gráficas →</span>
+            <span className="text-sm font-black block">Ahorro y Estadísticas del Mes</span>
+            <span className="text-xs text-slate-500 font-semibold">Ver metas, DTI y ritmo de presupuesto →</span>
           </div>
         </Link>
       </div>
@@ -320,7 +224,6 @@ export default function OverviewPage() {
           </div>
         </button>
       </div>
-
     </div>
   );
 }

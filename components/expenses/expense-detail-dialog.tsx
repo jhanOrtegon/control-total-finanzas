@@ -58,7 +58,7 @@ export function ExpenseDetailDialog({ expense, open, onOpenChange }: ExpenseDeta
                   ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                   : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
               }`}>
-                {expense.type === "recurrent" ? "Mensual" : "Gasto Variable"}
+                {expense.type === "recurrent" ? "Gasto Fijo" : "Gasto Variable"}
               </span>
             </div>
 

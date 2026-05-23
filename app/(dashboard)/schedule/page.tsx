@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFinance } from "@/providers/finance-provider";
-import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense, getUserProfileConfig, getYearlyIncome } from "@/lib/finance-calculations";
+import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense, getUserProfileConfig, getYearlyIncome, isSystemExpense } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
@@ -126,7 +126,8 @@ export default function SchedulePage() {
 
   // Compile monthly statistics
   const getMonthlyStats = (monthNum: number) => {
-    const recurrentTemplates = expenses.filter((e) => e.type === "recurrent");
+    const allRecurrentTemplates = expenses.filter((e) => e.type === "recurrent");
+    const recurrentTemplates = allRecurrentTemplates;
 
     // 1. Paid recurrent entries
     const paidRecurrents = expenses.filter(
@@ -134,7 +135,7 @@ export default function SchedulePage() {
         e.type === "one-time" &&
         e.status === "paid" &&
         isDateInMonth(e.paid_date || e.due_date, monthNum, selectedYear) &&
-        recurrentTemplates.some(
+        allRecurrentTemplates.some(
           (temp) => temp.title.toLowerCase() === e.title.toLowerCase(),
         ),
     );
@@ -144,6 +145,7 @@ export default function SchedulePage() {
       (e) =>
         e.type === "one-time" &&
         e.category === "Ingresos" &&
+        !isSystemExpense(e) &&
         isDateInMonth(
           e.status === "paid" ? e.paid_date : e.due_date,
           monthNum,
@@ -156,12 +158,13 @@ export default function SchedulePage() {
       (e) =>
         e.type === "one-time" &&
         e.category !== "Ingresos" &&
+        !isSystemExpense(e) &&
         isDateInMonth(
           e.status === "paid" ? e.paid_date : e.due_date,
           monthNum,
           selectedYear,
         ) &&
-        !recurrentTemplates.some(
+        !allRecurrentTemplates.some(
           (temp) => temp.title.toLowerCase() === e.title.toLowerCase(),
         ) &&
         !e.title.toLowerCase().startsWith("abono a deuda:") &&
@@ -257,7 +260,8 @@ export default function SchedulePage() {
       profile.profileType === "empleado" &&
       (profile.contractType === "indefinido" || profile.contractType === "fijo")
     ) {
-      primasIncome = baseIncome / 2;
+      const fullYearlyIncome = getYearlyIncome(expenses, selectedYear, budget?.monthly_income || 0);
+      primasIncome = fullYearlyIncome / 2;
     }
 
     const extraIncome = incomeObligations.reduce((a, c) => a + c.amount, 0);
@@ -583,16 +587,18 @@ export default function SchedulePage() {
               : "bg-white border-slate-200"
           }`}
         >
-          <div>
-            <h3 className="text-base lg:text-lg font-black mb-2 flex items-center gap-2">
-              <span>Progreso del Mes</span>
-              <span className="text-sm text-indigo-500 font-bold">
-                ({MONTHS[selectedMonth - 1].fullName})
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed font-semibold max-w-xl">
-              Mapea el porcentaje de obligaciones de este mes que has liquidado.
-            </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-base lg:text-lg font-black mb-2 flex items-center gap-2">
+                <span>Progreso del Mes</span>
+                <span className="text-sm text-indigo-500 font-bold">
+                  ({MONTHS[selectedMonth - 1].fullName})
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-semibold max-w-xl">
+                Mapea el porcentaje de obligaciones de este mes que has liquidado.
+              </p>
+            </div>
           </div>
 
           <div className="my-7 flex flex-col items-center justify-center">
@@ -962,7 +968,7 @@ export default function SchedulePage() {
                         </span>
                         {"isRecurrentTemplate" in ob && (
                           <span className="text-[8px] uppercase tracking-wider font-extrabold bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 px-1.5 py-0.5 rounded-full">
-                            Recurrente
+                            Fijo
                           </span>
                         )}
                         {"isDebt" in ob && (

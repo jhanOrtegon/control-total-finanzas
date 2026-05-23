@@ -103,6 +103,13 @@ export function isDebtApplicableToMonth(
 }
 
 export function getExpenseDateInMonth(expense: Expense, month: number, year: number) {
+  if (expense.target_month) {
+    const [tYear, tMonth] = expense.target_month.split("-").map(Number);
+    if (!isNaN(tYear) && !isNaN(tMonth)) {
+      return tYear === year && tMonth === month;
+    }
+  }
+
   const dateStr =
     expense.status === "paid"
       ? expense.paid_date || expense.due_date

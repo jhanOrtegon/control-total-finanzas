@@ -18,6 +18,8 @@ import {
   ArrowRight, 
   HelpCircle,
   PiggyBank,
+  Activity,
+  Target,
   HelpCircle as InfoIcon
 } from "lucide-react";
 
@@ -83,6 +85,24 @@ export default function AdvisorPage() {
   };
 
   const rule = getRuleDetails();
+
+  // Financial Health Score Calculation
+  const dtiScore = Math.max(0, 30 - Math.max(0, summary.dtiRatio - 20) * 1.5);
+  const savScore = Math.min(40, (savingsPct / 20) * 40);
+  const needsScore = Math.max(0, 30 - Math.max(0, needsPct - 50) * 1.5);
+  const healthScore = Math.round(dtiScore + savScore + needsScore);
+
+  let scoreLabel = "";
+  let scoreColor = "";
+  if (healthScore >= 80) { scoreLabel = "Excelente Sólido"; scoreColor = "text-emerald-500"; }
+  else if (healthScore >= 60) { scoreLabel = "Estable Creciente"; scoreColor = "text-indigo-500"; }
+  else if (healthScore >= 40) { scoreLabel = "Vulnerable"; scoreColor = "text-amber-500"; }
+  else { scoreLabel = "Crítico Riesgo Liquidez"; scoreColor = "text-rose-500"; }
+
+  // Micro-Advice Helpers
+  const needsDeficit = income > 0 && needsPct > rule.targetNeeds ? income * ((needsPct - rule.targetNeeds) / 100) : 0;
+  const wantsDeficit = income > 0 && wantsPct > rule.targetWants ? income * ((wantsPct - rule.targetWants) / 100) : 0;
+  const savingsDeficit = income > 0 && savingsPct < rule.targetSavings ? income * ((rule.targetSavings - savingsPct) / 100) : 0;
 
   // Active debts list
   const activeDebts = debts.filter((d) => d.remaining_amount > 0);
@@ -224,31 +244,23 @@ export default function AdvisorPage() {
           </p>
         </div>
 
-        <div className={`p-6 border rounded-3xl shadow-md ${
+        <div className={`p-6 border rounded-3xl shadow-md relative overflow-hidden ${
           theme === "dark" ? "bg-slate-900/40 border-slate-800" : "bg-white border-slate-200"
         }`}>
           <div className="flex items-center gap-2 text-slate-500 text-xs font-bold uppercase tracking-wider mb-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>Diagnóstico Economista</span>
+            <Activity className="w-4 h-4 text-amber-500" />
+            <span>Puntaje Salud Financiera</span>
           </div>
-          <div className="text-sm font-bold flex items-center gap-1.5 mt-1">
-            {needsPct > 65 ? (
-              <span className="text-rose-500 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" /> Sobrecarga de Costos Fijos
-              </span>
-            ) : realAvailableCash < 0 ? (
-              <span className="text-rose-500 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" /> Flujo en Déficit Activo
-              </span>
-            ) : (
-              <span className="text-emerald-500 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> Estructura Balanceada
-              </span>
-            )}
+          <div className="flex items-end gap-2">
+            <div className={`text-3xl font-black leading-none ${scoreColor}`}>{healthScore}</div>
+            <div className="text-xs font-bold text-slate-400 mb-1">/ 100</div>
           </div>
-          <p className="text-[10px] text-slate-400 font-semibold mt-1">
-            Análisis de distribución de recursos según tu ingreso de {formatCurrency(income)}.
+          <p className={`text-[10px] font-bold mt-1.5 ${scoreColor}`}>
+            {scoreLabel}
           </p>
+          <div className="absolute top-0 bottom-0 right-0 w-24 opacity-10 pointer-events-none flex items-center justify-end pr-4">
+            <Target className="w-16 h-16" />
+          </div>
         </div>
       </section>
 
@@ -353,10 +365,10 @@ export default function AdvisorPage() {
                     title={`Límite del ${rule.targetNeeds}%`}
                   ></div>
                 </div>
-                <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                <p className="text-[10px] font-semibold mt-1">
                   {needsPct > rule.targetNeeds 
-                    ? `⚠️ Te excedes por ${Math.round(needsPct - rule.targetNeeds)}% del presupuesto recomendado. Reduce suscripciones o abona a deudas para bajar cuotas fijas.`
-                    : "✅ Cumples holgadamente con esta porción."}
+                    ? <span className="text-rose-500">⚠️ Micro-Consejo: Debes recortar exactamente <span className="font-black">{formatCurrency(needsDeficit)}</span> en tus costos fijos. Intenta cancelar una suscripción o renegociar el plan celular.</span>
+                    : <span className="text-emerald-500">✅ Cumples holgadamente con esta porción. Ningún ajuste requerido.</span>}
                 </p>
               </div>
 
@@ -380,10 +392,10 @@ export default function AdvisorPage() {
                       title={`Límite del ${rule.targetWants}%`}
                     ></div>
                   </div>
-                  <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                  <p className="text-[10px] font-semibold mt-1">
                     {wantsPct > rule.targetWants 
-                      ? `⚠️ Gastas un ${Math.round(wantsPct - rule.targetWants)}% extra en variables. Modera salidas o compras para no restar capacidad de ahorro.`
-                      : "✅ Tu estilo de vida es congruente con tu nivel de ingresos."}
+                      ? <span className="text-amber-500">⚠️ Micro-Consejo: Has excedido tu cuota de diversión por <span className="font-black">{formatCurrency(wantsDeficit)}</span>. Evita restaurantes la próxima semana para cuadrar caja.</span>
+                      : <span className="text-emerald-500">✅ Tu estilo de vida es congruente con tu nivel de ingresos.</span>}
                   </p>
                 </div>
               )}
@@ -405,10 +417,10 @@ export default function AdvisorPage() {
                     title={`Límite del ${rule.targetSavings}%`}
                   ></div>
                 </div>
-                <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                <p className="text-[10px] font-semibold mt-1">
                   {savingsPct < rule.targetSavings 
-                    ? `⚠️ Te falta un ${Math.round(rule.targetSavings - savingsPct)}% para cumplir con tu meta de libertad financiera futura.`
-                    : "✅ ¡Excelente! Superas la tasa recomendada de ahorro."}
+                    ? <span className="text-indigo-400">💡 Micro-Consejo: Aumenta tu transferencia automática de ahorro en <span className="font-black">{formatCurrency(savingsDeficit)}</span> para asegurar tu independencia financiera.</span>
+                    : <span className="text-emerald-500">✅ ¡Excelente! Superas la tasa recomendada de ahorro.</span>}
                 </p>
               </div>
             </div>

@@ -17,17 +17,21 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { useAuth } from "@/providers/auth-provider";
 
 export default function SimulatorPage() {
   const { theme } = useTheme();
-  const { budget, debts } = useFinance();
+  const { budget, debts, expenses, getMonthlySummary } = useFinance();
+  const { user } = useAuth();
 
   // Simulator state variables
   const [initialCapital, setInitialCapital] = useState<number | "">(1000000); // 1M COP default
   const [monthlySavings, setMonthlySavings] = useState<number | "">("");
   const [annualRate, setAnnualRate] = useState<string>("12"); // 12% CDT/Investment return
+  const [estimatedInflation, setEstimatedInflation] = useState<string>("5"); // 5% default inflation
   const [extraDebtPay, setExtraDebtPay] = useState<number | "">(200000); // 200k COP extra default
-  const [horizonMonths, setHorizonMonths] = useState<number>(60); // 5 years default
+  const [horizonMonths, setHorizonMonths] = useState<number>(120); // 10 years default to show FIRE more often
+  const [fireExpenses, setFireExpenses] = useState<number | "">(3000000); // Monthly expenses needed for FIRE
 
   // Pre-populate savings contribution from user's budget settings once loaded
   useEffect(() => {
@@ -38,14 +42,18 @@ export default function SimulatorPage() {
     }
   }, [budget]);
 
-  // Active debts list
   const activeDebts = debts.filter((d) => d.remaining_amount > 0);
 
   // Parse numeric values
   const initCap = (initialCapital as number) || 0;
   const monthlySave = (monthlySavings as number) || 0;
   const rate = parseFloat(annualRate) || 0;
+  const infRate = parseFloat(estimatedInflation) || 0;
   const extraDebt = (extraDebtPay as number) || 0;
+  const targetFireMonthly = (fireExpenses as number) || 0;
+  
+  // FIRE Target (4% rule: Annual expenses / 0.04)
+  const fireTarget = targetFireMonthly > 0 ? (targetFireMonthly * 12) / 0.04 : 0;
 
   // Run month-by-month projection simulation
   const monthsTotal = horizonMonths;
@@ -73,6 +81,7 @@ export default function SimulatorPage() {
 
   let debtFreeMonth: number | null = null;
   let crossingMonth: number | null = null;
+  let fireMonth: number | null = null;
 
   for (let m = 1; m <= monthsTotal; m++) {
     // 1. Savings Compound Interest step
@@ -125,6 +134,11 @@ export default function SimulatorPage() {
 
     const netWorth = currentSavings - totalRemainingDebt;
 
+    // Record FIRE milestone
+    if (netWorth >= fireTarget && fireMonth === null && fireTarget > 0) {
+      fireMonth = m;
+    }
+
     projectionData.push({
       month: m,
       year: Math.ceil(m / 12),
@@ -142,6 +156,9 @@ export default function SimulatorPage() {
   const finalDebt = finalData?.debt || 0;
   const finalNetWorth = finalData?.netWorth || 0;
   const finalInterest = finalData?.interestEarned || 0;
+
+  // Real Purchasing Power (adjusted for inflation)
+  const finalRealNetWorth = finalNetWorth / Math.pow(1 + infRate / 100, horizonMonths / 12);
 
   const horizonLabel =
     horizonMonths === 6
@@ -264,6 +281,46 @@ export default function SimulatorPage() {
               </p>
             </div>
 
+            {/* Estimated Annual Inflation */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between">
+                <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Inflación Anual Esperada</label>
+                <span className="text-[10px] font-black text-rose-500">{infRate}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="20"
+                step="0.5"
+                value={estimatedInflation}
+                onChange={(e) => setEstimatedInflation(e.target.value)}
+                title="Inflación anual estimada"
+                className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+              <p className="text-[9px] text-slate-400 font-semibold leading-relaxed">
+                Pérdida de poder adquisitivo por devaluación. Se usa para calcular el valor *real* de tu dinero.
+              </p>
+            </div>
+
+            {/* FIRE Monthly Expenses Target */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider">Gastos Mensuales de Jubilación (FIRE)</label>
+              <div className="relative">
+                <CurrencyInput
+                  value={fireExpenses === "" ? undefined : fireExpenses}
+                  onChange={(val) => setFireExpenses(val)}
+                  title="Gastos mensuales para tu jubilación temprana"
+                  className={`w-full border rounded-xl py-2 focus:outline-none focus:ring-1 focus:ring-slate-400/20 focus:border-slate-400 text-xs font-bold transition ${
+                    theme === "dark" ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                  }`}
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 pointer-events-none">COP/mes</span>
+              </div>
+              <p className="text-[9px] text-slate-400 font-semibold">
+                Cuánto dinero mensual necesitas para vivir sin trabajar. Meta FIRE requerida: {formatCurrency(fireTarget)}.
+              </p>
+            </div>
+
             {/* Extra Debt Payment */}
             {activeDebts.length > 0 && (
               <div className="space-y-1.5">
@@ -329,8 +386,15 @@ export default function SimulatorPage() {
                 {formatCurrency(finalNetWorth)}
               </div>
               <span className="text-[9px] text-slate-400 font-semibold block mt-1">
-                Ahorros proyectados menos balance de deudas.
+                Valor Nominal Acumulado.
               </span>
+              <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <span className="text-[9px] font-bold text-slate-500 block uppercase">Poder Adquisitivo Real:</span>
+                <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                  {formatCurrency(finalRealNetWorth)}
+                </span>
+                <span className="text-[9px] text-slate-400 block mt-0.5">Descontando {infRate}% anual.</span>
+              </div>
             </div>
 
             {/* Card Savings */}
@@ -453,6 +517,35 @@ export default function SimulatorPage() {
                     <div>
                       <span className="block font-black text-slate-800 dark:text-slate-200 mb-0.5">Sin Cruce Patrimonial</span>
                       <p className="text-[10px] text-slate-400 font-semibold">Tus deudas siguen superando tus ahorros líquidos durante todo el plazo de {horizonLabel}.</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* FIRE Milestone */}
+              <div className={`p-3 rounded-2xl border text-xs flex items-start gap-3 md:col-span-2 ${
+                theme === "dark" ? "bg-slate-950/45 border-slate-850" : "bg-slate-50 border-slate-150"
+              }`}>
+                {fireMonth ? (
+                  <>
+                    <PiggyBank className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="block font-black text-slate-800 dark:text-slate-200 mb-0.5">
+                        🔥 Jubilación Temprana (FIRE) Alcanzada en Mes {fireMonth}
+                      </span>
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        ¡Felicidades! En aproximadamente {Math.ceil(fireMonth / 12)} {Math.ceil(fireMonth / 12) === 1 ? "año" : "años"} y {fireMonth % 12} meses, tus ahorros acumulados llegarán a {formatCurrency(fireTarget)}, lo que te permitiría retirar {formatCurrency(targetFireMonthly)} mensuales de por vida asumiendo un retiro seguro del 4%.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <PiggyBank className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="block font-black text-slate-800 dark:text-slate-200 mb-0.5">Progreso hacia Independencia Financiera (FIRE)</span>
+                      <p className="text-[10px] text-slate-400 font-semibold">
+                        Aún no alcanzas el monto objetivo de {formatCurrency(fireTarget)} en el plazo de {horizonLabel}. Estás al {Math.min(100, (finalNetWorth / fireTarget) * 100).toFixed(1)}% de lograrlo.
+                      </p>
                     </div>
                   </>
                 )}

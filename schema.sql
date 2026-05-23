@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   status VARCHAR(50) NOT NULL CHECK (status IN ('pending', 'paid')),
   due_date DATE,
   paid_date TIMESTAMP WITH TIME ZONE,
+  target_month VARCHAR(7),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

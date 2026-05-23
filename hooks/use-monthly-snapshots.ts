@@ -78,6 +78,14 @@ export function useMonthlySnapshots(userId: string | undefined) {
         );
 
         if (existing) {
+          const now = new Date();
+          const currentMonth = now.getMonth() + 1;
+          const currentYear = now.getFullYear();
+          if (year * 12 + month < currentYear * 12 + currentMonth) {
+            toast.error("El mes ya pasó y está sellado. No se puede volver a cerrar o modificar el historial.");
+            return false;
+          }
+
           const { data, error } = await insforge.database
             .from("monthly_snapshots")
             .update(payload)

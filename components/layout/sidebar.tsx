@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { useTheme } from "@/providers/theme-provider";
+import { toast } from "sonner";
 import {
   Sparkles,
   BarChart3,
@@ -28,6 +29,7 @@ import {
 
 export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [logoClicks, setLogoClicks] = useState(0);
 
   const pathname = usePathname();
   const { user, signOut } = useAuth();
@@ -76,6 +78,23 @@ export function Sidebar() {
       items: [{ href: "/settings", label: "Ajustes Generales", icon: Settings }],
     },
   ];
+
+  const handleLogoClick = () => {
+    const newClicks = logoClicks + 1;
+    setLogoClicks(newClicks);
+    if (newClicks >= 5) {
+      const isDev = localStorage.getItem("developerMode") === "true";
+      if (!isDev) {
+        localStorage.setItem("developerMode", "true");
+        toast.success("🔓 ¡Zona Peligrosa desbloqueada en Ajustes Generales!");
+      } else {
+        localStorage.setItem("developerMode", "false");
+        toast.success("🔒 Zona Peligrosa oculta.");
+      }
+      setLogoClicks(0);
+      window.dispatchEvent(new Event("developerModeToggled"));
+    }
+  };
 
   return (
     <aside
@@ -196,9 +215,14 @@ export function Sidebar() {
 
         {/* User info & Signout */}
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-10 h-10 rounded-xl bg-slate-800 text-indigo-400 border border-slate-700/50 flex items-center justify-center shrink-0 font-bold uppercase text-xs shadow-md">
+          <button
+            type="button"
+            onClick={handleLogoClick}
+            className="w-10 h-10 rounded-xl bg-slate-800 text-indigo-400 border border-slate-700/50 flex items-center justify-center shrink-0 font-bold uppercase text-xs shadow-md cursor-pointer transition active:scale-95"
+            title="Logo de Usuario"
+          >
             {user?.email?.charAt(0)}
-          </div>
+          </button>
           {isExpanded && (
             <div className="overflow-hidden truncate flex-1 pr-2">
               <span

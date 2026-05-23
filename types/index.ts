@@ -8,6 +8,7 @@ export interface Expense {
   status: "pending" | "paid";
   due_date: string | null;
   paid_date: string | null;
+  target_month?: string | null;
   created_at: string;
 }
 

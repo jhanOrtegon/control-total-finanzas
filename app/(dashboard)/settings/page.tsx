@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/providers/auth-provider";
 import { useFinance } from "@/providers/finance-provider";
-import { Settings, Save, Plus, Trash2, Briefcase, Calendar } from "lucide-react";
+import { Settings, Save, Plus, Trash2, Briefcase, Calendar, User } from "lucide-react";
 import { toast } from "sonner";
 import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { insforge } from "@/lib/insforge";
+import { DataManagementPanel } from "@/components/settings/data-management-panel";
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const { budget, updateBudget, budgetLoading, expenses, refetchAll } = useFinance();
 
   const [profileType, setProfileType] = useState<string>("empleado");
@@ -18,8 +21,21 @@ export default function SettingsPage() {
   const [budgetLimit, setBudgetLimit] = useState<number | "">("");
   const [yearlySalaries, setYearlySalaries] = useState<{ year: number; amount: number; id?: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isDeveloperMode, setIsDeveloperMode] = useState(false);
+  const [logoClicks, setLogoClicks] = useState(0);
 
   // Sync inputs with budget data & extract CONFIG expenses
+  useEffect(() => {
+    setIsDeveloperMode(localStorage.getItem("developerMode") === "true");
+
+    const handleToggle = () => {
+      setIsDeveloperMode(localStorage.getItem("developerMode") === "true");
+    };
+
+    window.addEventListener("developerModeToggled", handleToggle);
+    return () => window.removeEventListener("developerModeToggled", handleToggle);
+  }, []);
+
   useEffect(() => {
     if (budget) {
       setSavingsGoal(budget.monthly_savings_goal > 0 ? budget.monthly_savings_goal : "");
@@ -123,6 +139,25 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogoClick = () => {
+    const newClicks = logoClicks + 1;
+    setLogoClicks(newClicks);
+    if (newClicks >= 5) {
+      const isDev = localStorage.getItem("developerMode") === "true";
+      if (!isDev) {
+        localStorage.setItem("developerMode", "true");
+        toast.success("🔓 ¡Zona Peligrosa desbloqueada!");
+        setIsDeveloperMode(true);
+      } else {
+        localStorage.setItem("developerMode", "false");
+        toast.success("🔒 Zona Peligrosa oculta.");
+        setIsDeveloperMode(false);
+      }
+      setLogoClicks(0);
+      window.dispatchEvent(new Event("developerModeToggled"));
+    }
+  };
+
   const isSaving = loading || budgetLoading;
 
   return (
@@ -130,6 +165,22 @@ export default function SettingsPage() {
       <PoolBalanceBanner />
       
       <section className="border rounded-3xl p-6 sm:p-8 shadow-xl space-y-8 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
+        {/* Mi Perfil / User Icon for Easter Egg */}
+        <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={handleLogoClick}
+            className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold uppercase text-lg shadow-md cursor-pointer transition active:scale-95"
+            title="Logo de Usuario"
+          >
+            {user?.email?.charAt(0) || <User className="w-6 h-6" />}
+          </button>
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">Sesión Activa</h3>
+            <p className="text-xs text-slate-500 font-semibold">{user?.email || "Usuario"}</p>
+          </div>
+        </div>
+
         <div>
           <h2 className="text-lg font-black flex items-center gap-2">
             <Settings className="w-6 h-6 text-indigo-500" />
@@ -295,6 +346,10 @@ export default function SettingsPage() {
           </div>
         </form>
       </section>
+
+      <div className={isDeveloperMode ? "block" : "hidden"}>
+        <DataManagementPanel />
+      </div>
     </div>
   );
 }

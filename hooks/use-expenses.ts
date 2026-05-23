@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useOptimistic } from "react";
 import { insforge } from "@/lib/insforge";
 import { Expense } from "@/types";
 import { toast } from "sonner";
@@ -21,6 +21,42 @@ export function useExpenses(userId: string | undefined) {
       ? normalized.slice(0, maxLength)
       : normalized;
   };
+
+  const [optimisticExpenses, addOptimisticExpense] = useOptimistic(
+    expenses,
+    (state: Expense[], newExpense: Expense) => {
+      // Si el id es temporal o ya existe, actualizamos
+      const exists = state.find(e => e.id === newExpense.id);
+      if (exists) {
+         return state.map(e => e.id === newExpense.id ? newExpense : e);
+      }
+      return [newExpense, ...state];
+    }
+  );
+
+  const isPastMonth = useCallback((expense: Expense) => {
+    let eMonth, eYear;
+    if (expense.target_month) {
+      const [y, m] = expense.target_month.split("-").map(Number);
+      eMonth = m;
+      eYear = y;
+    } else {
+      const dStr = expense.status === "paid" ? (expense.paid_date || expense.due_date) : (expense.due_date || expense.paid_date);
+      if (!dStr) return false;
+      const d = new Date(dStr);
+      eMonth = d.getMonth() + 1;
+      eYear = d.getFullYear();
+    }
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const expIndex = eYear * 12 + eMonth;
+    const curIndex = currentYear * 12 + currentMonth;
+
+    return expIndex < curIndex;
+  }, []);
 
   const fetchExpenses = useCallback(async () => {
     if (!userId) return;
@@ -52,60 +88,80 @@ export function useExpenses(userId: string | undefined) {
 
   const addExpense = async (payload: Omit<Expense, "id" | "user_id" | "created_at" | "paid_date"> & { paid_date?: string | null }) => {
     if (!userId) return null;
-    return withLoading(async () => {
-      try {
-        const title = clampText(payload.title, MAX_TITLE_LENGTH);
-        if (!title) {
-          toast.error("El titulo del movimiento es obligatorio");
-          return null;
-        }
+    const title = clampText(payload.title, MAX_TITLE_LENGTH);
+    if (!title) {
+      toast.error("El titulo del movimiento es obligatorio");
+      return null;
+    }
 
-        const category =
-          clampText(payload.category, MAX_CATEGORY_LENGTH) || "Otros";
+    const category = clampText(payload.category, MAX_CATEGORY_LENGTH) || "Otros";
 
-        const newPayload = {
-          user_id: userId,
-          title,
-          amount: payload.amount,
-          category,
-          type: payload.type,
-          status: payload.status,
-          due_date: payload.due_date || null,
-          paid_date:
-            payload.status === "paid"
-              ? payload.paid_date || new Date().toISOString()
-              : null,
+    const newPayload = {
+      user_id: userId,
+      title,
+      amount: payload.amount,
+      category,
+      type: payload.type,
+      status: payload.status,
+      target_month: payload.target_month || null,
+      due_date: payload.due_date || null,
+      paid_date: payload.status === "paid" ? payload.paid_date || new Date().toISOString() : null,
+    };
+    
+    // Optimsitic inject
+    const tempExpense: Expense = {
+      id: `temp-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...newPayload,
+      amount: Number(newPayload.amount)
+    };
+    addOptimisticExpense(tempExpense);
+
+    try {
+      const { data, error } = await insforge.database
+        .from("expenses")
+        .insert([newPayload])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const added: Expense = {
+          ...data,
+          amount: Number(data.amount),
         };
-
-        const { data, error } = await insforge.database
-          .from("expenses")
-          .insert([newPayload])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          const added: Expense = {
-            ...data,
-            amount: Number(data.amount),
-          };
-          setExpenses((prev) => [added, ...prev]);
-          toast.success(`✅ ${added.title}`, { description: `${formatCurrency(added.amount)} · ${added.category}` });
-          broadcastMutation(userId, "INSERT_expense", added);
-          return added;
-        }
-        return null;
-      } catch (err: any) {
-        console.error("Error adding expense:", err);
-        toast.error("Error al registrar el gasto");
-        return null;
+        setExpenses((prev) => [added, ...prev]);
+        toast.success(`✅ ${added.title}`, { description: `${formatCurrency(added.amount)} · ${added.category}` });
+        broadcastMutation(userId, "INSERT_expense", added);
+        return added;
       }
-    }, "Registrando egreso...");
+      return null;
+    } catch (err: any) {
+      console.error("Error adding expense:", err);
+      toast.error("Error al registrar el gasto. Revirtiendo cambio...");
+      // Revert base state to force re-render without optimistic (already happens automatically as state isn't updated)
+      setExpenses([...expenses]); 
+      return null;
+    }
   };
 
   const updateExpense = async (id: string, payload: Partial<Omit<Expense, "id" | "user_id" | "created_at" | "paid_date"> & { paid_date?: string | null }>) => {
     if (!userId) return null;
+    
+    const existing = expenses.find((e) => e.id === id);
+    if (existing && isPastMonth(existing)) {
+      if (existing.status === "paid") {
+        toast.error("El mes ya cerró: no puedes editar un gasto pagado en el pasado.");
+        return null;
+      }
+      if (payload.status === "pending") {
+        toast.error("El mes ya cerró: no puedes revertir un gasto a estado pendiente.");
+        return null;
+      }
+    }
+
     return withLoading(async () => {
       try {
         const updatePayload: any = {
@@ -147,6 +203,12 @@ export function useExpenses(userId: string | undefined) {
   };
 
   const deleteExpense = async (id: string) => {
+    const existing = expenses.find((e) => e.id === id);
+    if (existing && isPastMonth(existing) && existing.status === "paid") {
+      toast.error("El mes ya cerró: no puedes eliminar un gasto pagado en el pasado.");
+      return false;
+    }
+
     return withLoading(async () => {
       try {
         const { error } = await insforge.database
@@ -193,7 +255,7 @@ export function useExpenses(userId: string | undefined) {
   );
 
   return {
-    expenses,
+    expenses: optimisticExpenses,
     loading,
     addExpense,
     updateExpense,

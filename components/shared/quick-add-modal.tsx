@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useFinance } from "@/providers/finance-provider";
+import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { useConfirm } from "@/providers/confirm-provider";
 import { CATEGORIES_LIST, getCategoryEmoji } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
@@ -23,11 +24,13 @@ interface QuickAddModalProps {
 
 export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
   const { addExpense } = useFinance();
+  const { month, year } = useFinancePeriod();
   const confirm = useConfirm();
   const [txType, setTxType] = useState<"expense" | "income">("expense");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState<number | "">("");
   const [category, setCategory] = useState("Comida");
+  const [targetMonthOption, setTargetMonthOption] = useState<"current" | "next">("current");
   const [markAsPaid, setMarkAsPaid] = useState(false);
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -38,6 +41,7 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
       setTitle("");
       setAmount("");
       setCategory("Comida");
+      setTargetMonthOption("current");
       setMarkAsPaid(false);
       setTimeout(() => titleRef.current?.focus(), 100);
     }
@@ -68,12 +72,24 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
 
     setSaving(true);
     try {
+      let target_month = null;
+      if (targetMonthOption === "next") {
+        let nextMonth = month + 1;
+        let nextYear = year;
+        if (nextMonth > 12) {
+          nextMonth = 1;
+          nextYear++;
+        }
+        target_month = `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+      }
+
       await addExpense({
         title: title.trim(),
         amount: val,
         category: txType === "income" ? "Ingresos" : category,
         type: "one-time",
         status: txType === "income" || markAsPaid ? "paid" : "pending",
+        target_month,
         due_date: new Date().toISOString().slice(0, 10),
       });
       onClose();
@@ -216,6 +232,37 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
                 </div>
               </div>
             )}
+
+            {/* Target Month Selector */}
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                Mes de asignación
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTargetMonthOption("current")}
+                  className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold transition cursor-pointer border ${
+                    targetMonthOption === "current"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                      : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-400"
+                  }`}
+                >
+                  Mes Actual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetMonthOption("next")}
+                  className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold transition cursor-pointer border ${
+                    targetMonthOption === "next"
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                      : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-400"
+                  }`}
+                >
+                  Próximo Mes
+                </button>
+              </div>
+            </div>
 
             {/* Mark as paid */}
             {txType === "expense" && (

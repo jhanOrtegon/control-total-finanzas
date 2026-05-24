@@ -2,7 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/providers/theme-provider";
-import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/providers/auth-provider";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { SyncStatus } from "@/components/layout/sync-status";
 import { AlertBadge } from "@/components/layout/alert-badge";
 import { PeriodSelector } from "@/components/shared/period-selector";
@@ -12,6 +13,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme } = useTheme();
+  const { signOut } = useAuth();
 
   const getRouteDetails = () => {
     switch (pathname) {
@@ -89,11 +91,11 @@ export function Header() {
   const { title, subtitle } = getRouteDetails();
 
   return (
-    <header className={`backdrop-blur-md border-b sticky top-0 z-20 ${
-      theme === "dark" ? "bg-slate-950/40 border-slate-900/60" : "bg-white/70 border-slate-200/80 shadow-sm"
+    <header className={`backdrop-blur-md border-b sticky top-0 z-20 pt-[env(safe-area-inset-top)] ${
+      theme === "dark" ? "bg-slate-950/80 border-slate-900/60" : "bg-white/90 border-slate-200/80 shadow-sm"
     }`}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between">
+        <div className="flex items-center gap-3 md:gap-4">
           <MobileNav />
           {pathname !== "/" && (
             <button
@@ -108,22 +110,37 @@ export function Header() {
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <div>
-            <h1 className={`text-lg md:text-xl font-bold tracking-tight truncate max-w-[150px] sm:max-w-full ${
+          <div className="min-w-0">
+            <h1 className={`text-base md:text-xl font-bold tracking-tight truncate max-w-[130px] sm:max-w-full ${
               theme === "dark" ? "text-white" : "text-slate-900"
             }`}>
               {title}
             </h1>
-            <p className="hidden md:block text-xs text-slate-500 font-medium">
+            <p className="hidden md:block text-xs text-slate-500 font-medium truncate">
               {subtitle}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <PeriodSelector compact />
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          <div className="hidden sm:block">
+            <PeriodSelector compact />
+          </div>
           <SyncStatus />
           <AlertBadge />
+          
+          {/* Logout button visible on mobile directly in the header */}
+          <button
+            onClick={signOut}
+            className={`p-2 rounded-xl transition-colors shrink-0 md:hidden flex ${
+              theme === "dark" 
+                ? "bg-rose-500/10 text-rose-400 hover:bg-rose-500/20" 
+                : "bg-rose-50 text-rose-600 hover:bg-rose-100"
+            }`}
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

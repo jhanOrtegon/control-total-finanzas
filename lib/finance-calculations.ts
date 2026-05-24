@@ -179,6 +179,7 @@ export interface MonthlyFinanceSummary {
   realAvailableCash: number;
   dtiRatio: number;
   pendingObligationsCount: number;
+  totalPendingToPay: number;
 }
 
 export function computeMonthlySummary(
@@ -266,8 +267,6 @@ export function computeMonthlySummary(
     prima = baseIncome / 2;
   }
   const totalIncome = baseIncome + extraIncome + prima;
-
-  const realAvailableCash = totalIncome - monthSpent - savingsGoal;
   const dtiRatio =
     baseIncome > 0 ? (monthlyDebtMinimums / baseIncome) * 100 : 0;
 
@@ -280,11 +279,15 @@ export function computeMonthlySummary(
   );
 
   let pendingObligationsCount = 0;
+  let totalPendingToPay = 0;
   for (const temp of recurrentTemplates) {
     const isPaid = paidRecurrents.some(
       (p) => p.title.toLowerCase() === temp.title.toLowerCase(),
     );
-    if (!isPaid) pendingObligationsCount++;
+    if (!isPaid) {
+      pendingObligationsCount++;
+      totalPendingToPay += temp.amount;
+    }
   }
 
   for (const d of activeDebts) {
@@ -299,7 +302,10 @@ export function computeMonthlySummary(
           e.title.toLowerCase().includes(d.title.toLowerCase()) &&
           e.amount >= d.minimum_payment,
       );
-    if (!paid) pendingObligationsCount++;
+    if (!paid) {
+      pendingObligationsCount++;
+      totalPendingToPay += d.minimum_payment;
+    }
   }
 
   const oneTimePending = expenses.filter(
@@ -314,6 +320,9 @@ export function computeMonthlySummary(
       !isSystemExpense(e),
   );
   pendingObligationsCount += oneTimePending.length;
+  totalPendingToPay += oneTimePending.reduce((acc, e) => acc + e.amount, 0);
+
+  const realAvailableCash = totalIncome - monthSpent - totalPendingToPay - savingsGoal;
 
   return {
     month,
@@ -333,6 +342,7 @@ export function computeMonthlySummary(
     realAvailableCash,
     dtiRatio,
     pendingObligationsCount,
+    totalPendingToPay,
   };
 }
 

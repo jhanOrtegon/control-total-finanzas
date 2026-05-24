@@ -87,6 +87,7 @@ export default function OverviewPage() {
     totalInitialDebt,
     realAvailableCash,
     extraIncome,
+    totalPendingToPay,
   } = summary;
 
   const budgetLimit = budget?.monthly_budget || 0;
@@ -135,7 +136,7 @@ export default function OverviewPage() {
 
       <div className="col-span-1 md:col-span-3 xl:col-span-3">
         <StatCard
-          title="Gastado en el Mes"
+          title="Pagado (Mes)"
           value={formatCurrency(monthSpent)}
           variant={budgetUsedPct > 100 ? "danger" : budgetUsedPct > 80 ? "warning" : "default"}
           accentColor={budgetUsedPct > 100 ? "rose" : budgetUsedPct > 80 ? "amber" : "indigo"}
@@ -160,13 +161,27 @@ export default function OverviewPage() {
           footer={
             realAvailableCash >= 0 ? (
               <span className="text-slate-500 font-semibold leading-relaxed">
-                Tras gastos y meta de ahorro ({formatCurrency(savingsGoal)}).
+                Tras gastos pagados, pendientes y ahorro ({formatCurrency(savingsGoal)}).
               </span>
             ) : (
               <span className="text-rose-500 font-bold leading-relaxed">
                 Déficit de {formatCurrency(Math.abs(realAvailableCash))} este mes.
               </span>
             )
+          }
+        />
+      </div>
+
+      <div className="col-span-1 md:col-span-3 xl:col-span-3">
+        <StatCard
+          title="Por Pagar (Mes)"
+          value={formatCurrency(totalPendingToPay > 0 ? -totalPendingToPay : 0)}
+          variant={totalPendingToPay > 0 ? "danger" : "default"}
+          icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
+          footer={
+            <span className="text-slate-500 font-semibold leading-relaxed">
+              Lo que aún falta por pagar.
+            </span>
           }
         />
       </div>

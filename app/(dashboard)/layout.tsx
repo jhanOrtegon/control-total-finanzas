@@ -53,23 +53,23 @@ export default function DashboardLayout({
         <div className="flex-1 flex flex-col min-w-0 min-h-0 relative z-10 overflow-x-hidden">
           <Header />
 
-          {/* Extra bottom padding on mobile to avoid overlap with bottom tab bar */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8 space-y-8 overflow-y-auto pb-24 md:pb-8">
-            {children}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-8 space-y-8 overflow-y-auto pb-24 md:pb-8 flex flex-col">
+            <div className="flex-1">
+              {children}
+            </div>
+            <footer
+              className={`border-t pt-8 pb-4 text-center text-slate-500 text-xs mt-12 ${
+                theme === "dark"
+                  ? "border-slate-800/60"
+                  : "border-slate-200"
+              }`}
+            >
+              <p>
+                © 2026 Panel de Libertad Financiera. Lucha contra tu
+                endeudamiento y recupera el control.
+              </p>
+            </footer>
           </main>
-
-          <footer
-            className={`border-t py-8 text-center text-slate-500 text-xs mt-auto relative z-10 mb-16 md:mb-0 shrink-0 ${
-              theme === "dark"
-                ? "bg-slate-950/80 border-slate-900"
-                : "bg-white border-slate-200 shadow-inner"
-            }`}
-          >
-            <p>
-              © 2026 Panel de Libertad Financiera. Lucha contra tu
-              endeudamiento y recupera el control.
-            </p>
-          </footer>
         </div>
 
         <NovaChatbot />

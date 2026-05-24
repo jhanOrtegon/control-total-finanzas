@@ -83,56 +83,55 @@ export function ExpenseCard({
             : "bg-white border-slate-200"
         }`}
       >
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border shrink-0 ${getCategoryColor(expense.category)}`}>
+        <div className="flex items-start gap-3 sm:gap-4 w-full sm:w-auto flex-1 min-w-0">
+          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl border shrink-0 ${getCategoryColor(expense.category)}`}>
             {getCategoryEmoji(expense.category)}
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h4 className={`text-sm font-bold group-hover:text-indigo-500 transition line-clamp-2 break-all sm:break-normal ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
+              <h4 className={`text-sm font-bold group-hover:text-indigo-500 transition truncate ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 {expense.title}
               </h4>
-              <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
+              <span className={`self-start sm:self-auto text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${
                 expense.type === "recurrent"
                   ? "bg-purple-500/10 text-purple-500 border border-purple-500/20"
                   : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
               }`}>
-                {expense.type === "recurrent" ? "Gasto Fijo" : "Gasto Variable"}
+                {expense.type === "recurrent" ? "Fijo" : "Variable"}
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-xs text-slate-500 mt-1 font-semibold">
-              <span className="flex items-center gap-1">
-                <Tag className="w-3.5 h-3.5 text-slate-400" /> {expense.category}
-              </span>
+            <div className="flex items-center gap-1 text-xs text-slate-500 font-semibold truncate">
+              <Tag className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+              <span className="truncate">{expense.category}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex sm:flex-col items-end justify-between sm:justify-center w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-800/60 shrink-0 gap-3">
+        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-200 dark:border-slate-800/60 shrink-0 gap-3 mt-1 sm:mt-0">
           <div className="flex items-baseline gap-1 text-right">
-            <span className={`text-base font-black \${theme === "dark" ? "text-white" : "text-slate-950"}`}>
+            <span className={`text-base sm:text-lg font-black \${theme === "dark" ? "text-white" : "text-slate-950"}`}>
               {formatCurrency(expense.amount)}
             </span>
-            <span className="text-[9px] text-slate-400 font-bold uppercase">COP</span>
+            <span className="text-[9px] text-slate-400 font-bold uppercase shrink-0">COP</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => onViewDetail(expense)}
-              className={`p-1.5 rounded-lg border transition cursor-pointer \${
+              className={`p-1.5 sm:p-2 rounded-lg border transition cursor-pointer \${
                 theme === "dark"
                   ? "bg-slate-800 hover:bg-indigo-500/10 hover:text-indigo-400 border-slate-700/60 text-slate-400"
                   : "bg-slate-100 hover:bg-indigo-500/10 hover:text-indigo-500 border-slate-200 text-slate-500"
               }`}
               title="Ver Detalle"
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
 
             <button
               onClick={() => onStartEdit(expense)}
-              className={`p-1.5 rounded-lg border transition cursor-pointer \${
+              className={`p-1.5 sm:p-2 rounded-lg border transition cursor-pointer \${
                 isEditing
                   ? "bg-indigo-600 border-indigo-600 text-white"
                   : theme === "dark"
@@ -141,20 +140,20 @@ export function ExpenseCard({
               }`}
               title="Editar Gasto"
             >
-              <Edit3 className="w-3.5 h-3.5" />
+              <Edit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
             
             <div className="hidden sm:block">
               <button
                 onClick={() => onDelete(expense.id)}
-                className={`p-1.5 rounded-lg border transition cursor-pointer \${
+                className={`p-2 rounded-lg border transition cursor-pointer \${
                   theme === "dark"
                     ? "bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500 border-slate-700/60 hover:border-rose-500/20 text-slate-400"
                     : "bg-slate-100 hover:bg-rose-500/10 hover:text-rose-500 border-slate-200 hover:border-rose-500/20 text-slate-500"
                 }`}
                 title="Eliminar Gasto"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>

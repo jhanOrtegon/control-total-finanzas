@@ -179,10 +179,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       const entity = labels[type] || type;
       const action = opLabels[op] || op;
       const desc = title ? `${entity}: ${title}` : entity;
-      toast.info(`📡 ${desc} ${action}`, {
-        description: "Cambio sincronizado desde otra sesión",
-        duration: 3000,
-      });
+      // We still update the UI data via touchSync, but we don't spam the user with a toast
+      // if it's their own action triggering the realtime event.
       touchSync();
     },
   });

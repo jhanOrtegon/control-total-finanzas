@@ -119,6 +119,7 @@ export default function SchedulePage() {
   const [paymentAmount, setPaymentAmount] = useState<number | "">("");
   const [obligationsPage, setObligationsPage] = useState(1);
   const [scheduleTab, setScheduleTab] = useState<"pending" | "paid">("pending");
+  const [searchTerm, setSearchTerm] = useState("");
   const confirm = useConfirm();
   const [deferTargetObligation, setDeferTargetObligation] = useState<any | null>(null);
   const [deferDialogOpen, setDeferDialogOpen] = useState(false);
@@ -308,11 +309,17 @@ export default function SchedulePage() {
   const realAvailableAfterPayments =
     selectedStats.totalIncome - realPaymentsFlow - programmedSavings;
   const filteredObligations = useMemo(
-    () =>
-      selectedStats.allObligations.filter((ob) =>
+    () => {
+      let obs = selectedStats.allObligations.filter((ob) =>
         scheduleTab === "paid" ? ob.isPaid : !ob.isPaid && !("isIncome" in ob),
-      ),
-    [selectedStats.allObligations, scheduleTab],
+      );
+      if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        obs = obs.filter((ob) => ob.title.toLowerCase().includes(lowerSearch));
+      }
+      return obs;
+    },
+    [selectedStats.allObligations, scheduleTab, searchTerm],
   );
   const totalObligationPages = Math.max(
     1,
@@ -325,7 +332,7 @@ export default function SchedulePage() {
 
   useEffect(() => {
     setObligationsPage(1);
-  }, [selectedMonth, selectedYear, scheduleTab]);
+  }, [selectedMonth, selectedYear, scheduleTab, searchTerm]);
 
   useEffect(() => {
     if (obligationsPage > totalObligationPages) {
@@ -464,6 +471,33 @@ export default function SchedulePage() {
     }
 
     toast.success("Se han revertido los pagos del mes.", { id: toastId });
+  };
+
+  const handleUndoRecurrentAbono = async (ob: any) => {
+    const instances = expenses.filter(
+      (e) =>
+        e.type === "one-time" &&
+        e.status === "paid" &&
+        isDateInMonth(
+          e.paid_date || e.due_date,
+          selectedMonth,
+          selectedYear,
+        ) &&
+        e.title.toLowerCase() === ob.title.toLowerCase(),
+    );
+    instances.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    if (instances.length > 0) {
+      const ok = await confirm({
+        title: "Deshacer último abono",
+        description: `¿Estás seguro de deshacer el último abono de ${formatCurrency(instances[0].amount)} a ${ob.title}?`,
+        confirmLabel: "Sí, deshacer",
+        variant: "danger",
+      });
+      if (ok) {
+        await deleteExpense(instances[0].id);
+      }
+    }
   };
 
   const handlePayDebtSubmit = async (e: React.FormEvent) => {
@@ -938,8 +972,20 @@ export default function SchedulePage() {
                 </span>
               </button>
             </div>
+            
+            <div className="mt-4 flex max-w-sm">
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full text-xs font-bold px-3 py-2.5 border rounded-xl focus:outline-none transition ${
+                  theme === "dark" ? "bg-slate-900/60 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"
+                }`}
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
             {scheduleTab === "pending" && filteredObligations.length > 0 && (
               <button
                 onClick={handlePayAll}
@@ -1127,6 +1173,16 @@ export default function SchedulePage() {
                         )
                       ) : "isRecurrentTemplate" in ob ? (
                         <div className="flex items-center gap-2">
+                          {ob.amountPaid > 0 && !ob.isPaid && (
+                            <button
+                              onClick={() => handleUndoRecurrentAbono(ob)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"
+                              title="Deshacer último abono"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Deshacer Abono</span>
+                            </button>
+                          )}
                           {!ob.isPaid && (
                             <button
                               onClick={() => {

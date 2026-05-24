@@ -45,6 +45,7 @@ export default function ExpensesPage() {
   const [txCategory, setTxCategory] = useState("Comida");
   const [txMarkAsPaid, setTxMarkAsPaid] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleQuickChip = (title: string, amount: number, category: string) => {
     setTxTitle(title);
@@ -149,8 +150,13 @@ export default function ExpensesPage() {
 
   // Recurrent templates only (one-time expenses are managed in payment schedule)
   const recurrentTemplates = useMemo(() => {
-    return expenses.filter((e) => e.type === "recurrent" && !isSystemExpense(e));
-  }, [expenses]);
+    let list = expenses.filter((e) => e.type === "recurrent" && !isSystemExpense(e));
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      list = list.filter((e) => e.title.toLowerCase().includes(lower));
+    }
+    return list;
+  }, [expenses, searchTerm]);
 
   const currentMonthTransactions = expenses.filter((e) => {
     if (e.type !== "one-time" || isSystemExpense(e)) return false;
@@ -169,10 +175,17 @@ export default function ExpensesPage() {
 
   // Filtered month transactions
   const filteredMonthTransactions = useMemo(() => {
-    if (!categoryFilter) return currentMonthTransactions;
-    if (categoryFilter === "Ingresos") return currentMonthTransactions.filter((e) => e.category === "Ingresos");
-    return currentMonthTransactions.filter((e) => e.category === categoryFilter);
-  }, [currentMonthTransactions, categoryFilter]);
+    let list = currentMonthTransactions;
+    if (categoryFilter) {
+      if (categoryFilter === "Ingresos") list = list.filter((e) => e.category === "Ingresos");
+      else list = list.filter((e) => e.category === categoryFilter);
+    }
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      list = list.filter((e) => e.title.toLowerCase().includes(lower));
+    }
+    return list;
+  }, [currentMonthTransactions, categoryFilter, searchTerm]);
 
   // Pagination
   const recurringTotalPages = Math.ceil(recurrentTemplates.length / ITEMS_PER_PAGE);
@@ -225,6 +238,20 @@ export default function ExpensesPage() {
               {activeTab === "recurring" ? recurrentTemplates.length : filteredMonthTransactions.length}
             </span>
           </h2>
+
+          <div className="flex max-w-sm">
+            <input
+              type="text"
+              placeholder="Buscar por nombre..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setHistoryPage(1);
+                setRecurringPage(1);
+              }}
+              className="w-full text-xs font-bold px-3 py-2 border rounded-xl bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none transition"
+            />
+          </div>
 
           {/* Category filter chips — only in month tab */}
           {activeTab === "month" && (

@@ -473,7 +473,7 @@ export default function SchedulePage() {
     toast.success("Se han revertido los pagos del mes.", { id: toastId });
   };
 
-  const handleUndoRecurrentAbono = async (ob: any) => {
+  const handleUndoLastRecurrentAbono = async (ob: any) => {
     const instances = expenses.filter(
       (e) =>
         e.type === "one-time" &&
@@ -496,6 +496,34 @@ export default function SchedulePage() {
       });
       if (ok) {
         await deleteExpense(instances[0].id);
+      }
+    }
+  };
+
+  const handleUndoAllRecurrentAbonos = async (ob: any) => {
+    const instances = expenses.filter(
+      (e) =>
+        e.type === "one-time" &&
+        e.status === "paid" &&
+        isDateInMonth(
+          e.paid_date || e.due_date,
+          selectedMonth,
+          selectedYear,
+        ) &&
+        e.title.toLowerCase() === ob.title.toLowerCase(),
+    );
+    
+    if (instances.length > 0) {
+      const ok = await confirm({
+        title: "Deshacer todos los abonos",
+        description: `¿Estás seguro de eliminar todos los abonos (${instances.length}) hechos a ${ob.title}?`,
+        confirmLabel: "Sí, deshacer todos",
+        variant: "danger",
+      });
+      if (ok) {
+        for (const instance of instances) {
+          await deleteExpense(instance.id);
+        }
       }
     }
   };
@@ -1172,15 +1200,25 @@ export default function SchedulePage() {
                           </div>
                         )
                       ) : "isRecurrentTemplate" in ob ? (
-                        <div className="flex items-center gap-2">
-                          {ob.amountPaid > 0 && !ob.isPaid && (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          {ob.amountPaid > 0 && (
                             <button
-                              onClick={() => handleUndoRecurrentAbono(ob)}
+                              onClick={() => handleUndoLastRecurrentAbono(ob)}
                               className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100"
                               title="Deshacer último abono"
                             >
                               <X className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">Deshacer Abono</span>
+                              <span className="hidden lg:inline">Último Abono</span>
+                            </button>
+                          )}
+                          {ob.amountPaid > 0 && !ob.isPaid && (
+                            <button
+                              onClick={() => handleUndoAllRecurrentAbonos(ob)}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-rose-100 hover:bg-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400"
+                              title="Deshacer todos los abonos"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden lg:inline">Todos</span>
                             </button>
                           )}
                           {!ob.isPaid && (
@@ -1197,9 +1235,13 @@ export default function SchedulePage() {
                           )}
                           <button
                             onClick={() => handleToggleRecurrent(ob as any)}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950"
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                              ob.isPaid 
+                                ? "bg-amber-500 hover:bg-amber-600 text-white" 
+                                : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950"
+                            }`}
                           >
-                            {ob.isPaid ? "Marcar Pendiente" : "Pagar Restante"}
+                            {ob.isPaid ? <><X className="w-3.5 h-3.5"/><span className="hidden sm:inline">Marcar Pendiente</span></> : <span>{ob.amountPaid > 0 ? "Pagar Restante" : "Pagar Factura"}</span>}
                           </button>
                         </div>
                       ) : "isIncome" in ob ? (

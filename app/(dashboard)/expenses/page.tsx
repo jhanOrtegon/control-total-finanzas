@@ -13,7 +13,7 @@ import { formatCurrency } from "@/lib/utils";
 import { isSystemExpense } from "@/lib/finance-calculations";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { useConfirm } from "@/providers/confirm-provider";
-import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2, FastForward } from "lucide-react";
+import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2, FastForward, Edit3 } from "lucide-react";
 import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 import { toast } from "sonner";
 
@@ -116,11 +116,48 @@ export default function ExpensesPage() {
     toast.success("Pago aplazado correctamente");
   };
 
+  const handleEditMonthTransaction = (expense: Expense) => {
+    setEditingExpense(expense);
+    setTxType(expense.category === "Ingresos" ? "income" : "expense");
+    setTxTitle(expense.title);
+    setTxAmount(expense.amount);
+    setTxCategory(expense.category === "Ingresos" ? "Comida" : expense.category);
+    setTxMarkAsPaid(expense.status === "paid");
+    setTxDueDate(expense.due_date || new Date().toISOString().slice(0, 10));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleCreateMonthlyTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!txTitle || !txAmount) return;
     const value = txAmount as number;
     if (isNaN(value) || value <= 0) return;
+
+    if (editingExpense) {
+      const ok = await confirm({
+        title: "Actualizar movimiento",
+        description: "¿Estás seguro de que deseas guardar los cambios en este movimiento?",
+        confirmLabel: "Guardar Cambios",
+      });
+      if (!ok) return;
+
+      const payload: Partial<Expense> = {
+        title: txTitle,
+        amount: value,
+        category: txType === "income" ? "Ingresos" : txCategory,
+        status: txType === "income" || txMarkAsPaid ? "paid" : "pending",
+        due_date: txDueDate,
+      };
+      
+      await updateExpense(editingExpense.id, payload);
+      setEditingExpense(null);
+      setTxTitle("");
+      setTxAmount("");
+      setTxCategory("Comida");
+      setTxMarkAsPaid(false);
+      setTxDueDate(new Date().toISOString().slice(0, 10));
+      return;
+    }
 
     const ok = await confirm({
       title: "Registrar movimiento",
@@ -210,7 +247,7 @@ export default function ExpensesPage() {
         <div className="border rounded-2xl p-1.5 bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 inline-flex gap-1">
           <button
             type="button"
-            onClick={() => setActiveTab("recurring")}
+            onClick={() => { setActiveTab("recurring"); setEditingExpense(null); }}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
               activeTab === "recurring"
                 ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
@@ -221,7 +258,7 @@ export default function ExpensesPage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("month")}
+            onClick={() => { setActiveTab("month"); setEditingExpense(null); }}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition ${
               activeTab === "month"
                 ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
@@ -349,6 +386,13 @@ export default function ExpensesPage() {
                           </p>
                           <div className="flex justify-end gap-1.5 sm:gap-2">
                             <button
+                              onClick={() => handleEditMonthTransaction(expense)}
+                              className="p-1.5 rounded-lg border transition cursor-pointer bg-slate-100 hover:bg-indigo-500/10 hover:text-indigo-500 border-slate-200 text-slate-500"
+                              title="Editar Movimiento"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
                               onClick={() => setDetailExpense(expense)}
                               className="p-1.5 rounded-lg border transition cursor-pointer bg-slate-100 hover:bg-indigo-500/10 hover:text-indigo-500 border-slate-200 text-slate-500"
                               title="Ver Detalle"
@@ -409,11 +453,29 @@ export default function ExpensesPage() {
             />
           ) : (
             <div className="border rounded-3xl p-6 shadow-xl space-y-5 bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-slate-500/5 text-slate-500 border border-slate-500/10">
-                  <Plus className="w-5 h-5" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-slate-500/5 text-slate-500 border border-slate-500/10">
+                    {editingExpense ? <Edit3 className="w-5 h-5 animate-pulse" /> : <Plus className="w-5 h-5" />}
+                  </div>
+                  <h3 className="text-base font-bold">{editingExpense ? "Editar Movimiento" : "Registrar Movimiento del Mes"}</h3>
                 </div>
-                <h3 className="text-base font-bold">Registrar Movimiento del Mes</h3>
+                {editingExpense && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingExpense(null);
+                      setTxTitle("");
+                      setTxAmount("");
+                      setTxCategory("Comida");
+                      setTxMarkAsPaid(false);
+                      setTxDueDate(new Date().toISOString().slice(0, 10));
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                )}
               </div>
 
               {/* Quick Log Chips */}
@@ -564,8 +626,8 @@ export default function ExpensesPage() {
                   El movimiento se aplica automáticamente al <span className="font-black">mes en curso</span> y su estado se refleja en el cronograma mensual.
                 </p>
 
-                <button type="submit" className="w-full py-3 text-sm font-bold rounded-xl">
-                  Guardar movimiento del mes
+                <button type="submit" className={`w-full py-3 text-sm font-bold rounded-xl ${editingExpense ? "bg-indigo-600 text-white" : ""}`}>
+                  {editingExpense ? "Guardar Cambios" : "Guardar movimiento del mes"}
                 </button>
               </form>
             </div>

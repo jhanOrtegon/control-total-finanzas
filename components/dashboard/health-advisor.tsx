@@ -74,9 +74,18 @@ export function HealthAdvisor({
           <span>Recomendación Financiera</span>
         </h4>
         {isHealthy ? (
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Tus finanzas se mantienen en balance positivo. Tienes un remanente real de <strong className="text-emerald-500">{formatCurrency(realAvailableCash)}</strong> libres este mes. Te aconsejamos usar este excedente para realizar abonos extraordinarios a tus deudas activas en la pestaña "Mis Deudas" para reducir el pago de intereses a largo plazo.
-          </p>
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Tus finanzas se mantienen en balance positivo. Tienes un remanente proyectado de <strong className="text-emerald-500">{formatCurrency(realAvailableCash)}</strong> libres este mes. Te aconsejamos usar este excedente para realizar abonos extraordinarios a tus deudas activas o puedes aplazar pagos usando el asistente.
+            </p>
+            <button
+              onClick={() => setShowSolver(true)}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2 px-4 rounded-xl transition cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              Asistente de Rescate Financiero
+            </button>
+          </div>
         ) : (
           <div className="space-y-3">
             <p className="text-xs font-bold text-rose-400/90">
@@ -87,7 +96,7 @@ export function HealthAdvisor({
               className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold py-2 px-4 rounded-xl transition cursor-pointer"
             >
               <ShieldAlert className="w-4 h-4" />
-              Resolver Déficit con IA
+              Asistente de Rescate Financiero
             </button>
           </div>
         )}

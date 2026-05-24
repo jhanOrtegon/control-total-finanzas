@@ -40,7 +40,11 @@ export function DaySummaryBanner() {
   const upcomingCount = alerts.filter((a) => a.kind !== "due_overdue").length;
 
   const { text: greetingText, Icon: GreetingIcon } = getGreeting();
-  const formattedDate = getFormattedDate();
+  
+  const isCurrentMonth = month === new Date().getMonth() + 1 && year === new Date().getFullYear();
+  const formattedDate = isCurrentMonth 
+    ? getFormattedDate()
+    : `Proyección: ${new Date(year, month - 1).toLocaleString("es-CO", { month: "long", year: "numeric" })}`;
 
   const isPositive = summary.realAvailableCash >= 0;
   const spent = summary.monthSpent;

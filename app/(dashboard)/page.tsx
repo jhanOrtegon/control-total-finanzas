@@ -103,12 +103,7 @@ export default function OverviewPage() {
     <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-5 auto-rows-min">
       {/* Banners and Alerts - Full Width */}
       <div className="col-span-1 md:col-span-6 xl:col-span-12 space-y-4">
-        {!isCurrentMonth && (
-          <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
-            Periodo histórico — cambia el mes desde el encabezado.
-          </p>
-        )}
-        {isCurrentMonth && <DaySummaryBanner />}
+        <DaySummaryBanner />
         <PoolBalanceBanner dismissible />
         <DueAlerts />
       </div>

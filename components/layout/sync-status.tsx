@@ -76,7 +76,7 @@ export function SyncStatus() {
         }`}
       >
         <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-        <span>
+        <span className="hidden sm:inline">
           {loading
             ? "Sincronizando…"
             : lastSyncedAt

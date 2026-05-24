@@ -64,6 +64,16 @@ export function CategoryEnvelopes() {
     Transporte: 12,
     Entretenimiento: 10,
     Compras: 10,
+    Salud: 0,
+    Mamá: 0,
+    Educación: 0,
+    Mascotas: 0,
+    Viajes: 0,
+    Regalos: 0,
+    Suscripciones: 0,
+    Hogar: 0,
+    Belleza: 0,
+    Préstamos: 0,
     Otros: 10,
   };
 

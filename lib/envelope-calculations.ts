@@ -11,6 +11,16 @@ export const ENVELOPE_WEIGHTS: Record<string, number> = {
   Transporte: 0.12,
   Entretenimiento: 0.1,
   Compras: 0.1,
+  Salud: 0,
+  Mamá: 0,
+  Educación: 0,
+  Mascotas: 0,
+  Viajes: 0,
+  Regalos: 0,
+  Suscripciones: 0,
+  Hogar: 0,
+  Belleza: 0,
+  Préstamos: 0,
   Otros: 0.1,
 };
 

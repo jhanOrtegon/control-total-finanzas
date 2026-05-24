@@ -84,12 +84,12 @@ export function ExpenseCard({
         }`}
       >
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border shrink-0 \${getCategoryColor(expense.category)}`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border shrink-0 ${getCategoryColor(expense.category)}`}>
             {getCategoryEmoji(expense.category)}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className={`text-sm font-bold group-hover:text-indigo-500 transition \${theme === "dark" ? "text-white" : "text-slate-900"}`}>
+              <h4 className={`text-sm font-bold group-hover:text-indigo-500 transition line-clamp-2 break-all sm:break-normal ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
                 {expense.title}
               </h4>
               <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 ${

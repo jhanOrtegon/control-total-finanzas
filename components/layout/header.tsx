@@ -92,7 +92,7 @@ export function Header() {
     <header className={`backdrop-blur-md border-b sticky top-0 z-20 ${
       theme === "dark" ? "bg-slate-950/40 border-slate-900/60" : "bg-white/70 border-slate-200/80 shadow-sm"
     }`}>
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <MobileNav />
           {pathname !== "/" && (
@@ -109,7 +109,7 @@ export function Header() {
             </button>
           )}
           <div>
-            <h1 className={`text-lg md:text-xl font-bold tracking-tight ${
+            <h1 className={`text-lg md:text-xl font-bold tracking-tight truncate max-w-[150px] sm:max-w-full ${
               theme === "dark" ? "text-white" : "text-slate-900"
             }`}>
               {title}

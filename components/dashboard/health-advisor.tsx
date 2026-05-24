@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
-import { Sparkles, Info } from "lucide-react";
+import React, { useState } from "react";
+import { Sparkles, Info, ShieldAlert } from "lucide-react";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
+import { DeficitSolverDialog } from "./deficit-solver-dialog";
 
 interface HealthAdvisorProps {
   monthlyIncome: number;
@@ -21,6 +22,7 @@ export function HealthAdvisor({
   realAvailableCash,
 }: HealthAdvisorProps) {
   const { theme } = useTheme();
+  const [showSolver, setShowSolver] = useState(false);
 
   const budgetPercentage = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
   const isHealthy = realAvailableCash >= 0;
@@ -76,11 +78,26 @@ export function HealthAdvisor({
             Tus finanzas se mantienen en balance positivo. Tienes un remanente real de <strong className="text-emerald-500">{formatCurrency(realAvailableCash)}</strong> libres este mes. Te aconsejamos usar este excedente para realizar abonos extraordinarios a tus deudas activas en la pestaña "Mis Deudas" para reducir el pago de intereses a largo plazo.
           </p>
         ) : (
-          <p className="text-xs font-bold text-rose-400/90">
-            ⚠️ ¡Peligro de Déficit! Tu flujo de caja real proyectado se encuentra en negativo por un valor de <strong>{formatCurrency(Math.abs(realAvailableCash))}</strong>. Debes reducir inmediatamente tus "Gastos Únicos" no esenciales o renegociar las cuotas de tus deudas para evitar un sobreendeudamiento crítico.
-          </p>
+          <div className="space-y-3">
+            <p className="text-xs font-bold text-rose-400/90">
+              ⚠️ ¡Peligro de Déficit! Tu flujo de caja real proyectado se encuentra en negativo por un valor de <strong>{formatCurrency(Math.abs(realAvailableCash))}</strong>.
+            </p>
+            <button
+              onClick={() => setShowSolver(true)}
+              className="w-full flex items-center justify-center gap-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold py-2 px-4 rounded-xl transition cursor-pointer"
+            >
+              <ShieldAlert className="w-4 h-4" />
+              Resolver Déficit con IA
+            </button>
+          </div>
         )}
       </div>
+
+      <DeficitSolverDialog
+        open={showSolver}
+        onOpenChange={setShowSolver}
+        deficitAmount={Math.abs(realAvailableCash)}
+      />
     </div>
   );
 }

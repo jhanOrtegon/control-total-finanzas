@@ -69,10 +69,10 @@ export function DebtCard({
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         {/* Left Info */}
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h4
-              className={`text-base font-bold ${theme === "dark" ? "text-white" : "text-slate-900"}`}
+              className={`text-base font-bold line-clamp-2 break-all sm:break-normal ${theme === "dark" ? "text-white" : "text-slate-900"}`}
             >
               {debt.title}
             </h4>

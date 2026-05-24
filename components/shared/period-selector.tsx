@@ -27,7 +27,7 @@ export function PeriodSelector({ compact, showToday = true }: PeriodSelectorProp
         <ChevronLeft className="w-4 h-4" />
       </button>
       <span
-        className={`font-black text-center ${compact ? "text-xs min-w-28" : "text-sm min-w-40"}`}
+        className={`font-black text-center ${compact ? "text-xs min-w-[5rem] sm:min-w-28" : "text-sm min-w-40"}`}
       >
         {periodLabel}
       </span>

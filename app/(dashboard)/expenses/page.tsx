@@ -13,7 +13,7 @@ import { formatCurrency } from "@/lib/utils";
 import { isSystemExpense } from "@/lib/finance-calculations";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { useConfirm } from "@/providers/confirm-provider";
-import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2 } from "lucide-react";
+import { CreditCard, Plus, ArrowDownCircle, ArrowUpCircle, CalendarDays, Clock3, Eye, Trash2, FastForward } from "lucide-react";
 import { CategoryBudgetHint } from "@/components/expenses/category-budget-hint";
 import { toast } from "sonner";
 
@@ -95,6 +95,23 @@ export default function ExpensesPage() {
     if (ok) {
       await deleteExpense(id);
     }
+  };
+
+  const handleDeferExpense = async (expense: Expense) => {
+    const ok = await confirm({
+      title: "Aplazar Gasto",
+      description: "¿Quieres aplazar este pago para el mes siguiente?",
+      confirmLabel: "Sí, aplazar",
+      variant: "default",
+    });
+    if (!ok) return;
+    
+    const currentDueDate = new Date(expense.due_date || new Date().toISOString());
+    currentDueDate.setMonth(currentDueDate.getMonth() + 1);
+    const nextMonthDate = currentDueDate.toISOString().slice(0, 10);
+    
+    await updateExpense(expense.id, { due_date: nextMonthDate });
+    toast.success("Pago aplazado correctamente");
   };
 
   const handleCreateMonthlyTransaction = async (e: React.FormEvent) => {
@@ -303,6 +320,15 @@ export default function ExpensesPage() {
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
+                            {expense.status === "pending" && (
+                              <button
+                                onClick={() => handleDeferExpense(expense)}
+                                className="p-1.5 rounded-lg border transition cursor-pointer bg-slate-100 hover:bg-amber-500/10 hover:text-amber-600 border-slate-200 text-slate-500"
+                                title="Aplazar al mes siguiente"
+                              >
+                                <FastForward className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(expense.id)}
                               className="p-1.5 rounded-lg border transition cursor-pointer bg-slate-100 hover:bg-rose-500/10 hover:text-rose-500 border-slate-200 hover:border-rose-500/20 text-slate-500"

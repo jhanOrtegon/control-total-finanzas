@@ -190,7 +190,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   // Push notifications setup
   useEffect(() => {
     registerServiceWorker();
-    requestNotificationPermission();
+    // Notification permission should only be requested upon user interaction (e.g., button click)
+    // to prevent iOS Safari from crashing or blocking the page load.
   }, []);
 
   // Payment reminders (once per day)

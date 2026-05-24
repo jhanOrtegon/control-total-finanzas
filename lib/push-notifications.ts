@@ -1,11 +1,16 @@
 // Push notifications & service worker helpers
 
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (typeof window === "undefined" || !("Notification" in window)) return false;
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-  const permission = await Notification.requestPermission();
-  return permission === "granted";
+  try {
+    if (typeof window === "undefined" || !("Notification" in window)) return false;
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
+    const permission = await Notification.requestPermission();
+    return permission === "granted";
+  } catch (err) {
+    console.warn("[Notifications] Failed to request permission:", err);
+    return false;
+  }
 }
 
 export async function registerServiceWorker(): Promise<void> {

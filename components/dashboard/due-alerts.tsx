@@ -5,12 +5,14 @@ import Link from "next/link";
 import { AlertOctagon, AlertTriangle, CalendarClock } from "lucide-react";
 import { useFinance } from "@/providers/finance-provider";
 import { useTheme } from "@/providers/theme-provider";
+import { useFinancePeriod } from "@/providers/finance-period-provider";
 import { formatCurrency } from "@/lib/utils";
 import { buildDueAlerts } from "@/lib/alerts-engine";
 
 export function DueAlerts() {
   const { expenses, debts } = useFinance();
   const { theme } = useTheme();
+  const { isCurrentMonth } = useFinancePeriod();
 
   const { overdue, upcoming } = useMemo(() => {
     const all = buildDueAlerts(expenses, debts, 7);
@@ -20,7 +22,7 @@ export function DueAlerts() {
     };
   }, [expenses, debts]);
 
-  if (overdue.length === 0 && upcoming.length === 0) return null;
+  if (!isCurrentMonth || (overdue.length === 0 && upcoming.length === 0)) return null;
 
   return (
     <section

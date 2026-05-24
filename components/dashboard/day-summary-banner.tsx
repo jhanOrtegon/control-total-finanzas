@@ -76,26 +76,28 @@ export function DaySummaryBanner() {
           <p className="text-xs text-white/50 capitalize">{formattedDate}</p>
 
           {/* Alerts summary */}
-          <div className="flex flex-wrap gap-2 mt-3">
-            {overdueCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-500/30 border border-rose-400/40 text-rose-100">
-                <AlertTriangle className="w-3 h-3" />
-                {overdueCount} vencido{overdueCount > 1 ? "s" : ""}
-              </span>
-            )}
-            {upcomingCount > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/30 border border-amber-400/40 text-amber-100">
-                <AlertTriangle className="w-3 h-3" />
-                {upcomingCount} próximo{upcomingCount > 1 ? "s" : ""}
-              </span>
-            )}
-            {overdueCount === 0 && upcomingCount === 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/30 border border-emerald-400/40 text-emerald-100">
-                <Smile className="w-3 h-3" />
-                Sin alertas urgentes
-              </span>
-            )}
-          </div>
+          {isCurrentMonth && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {overdueCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-500/30 border border-rose-400/40 text-rose-100">
+                  <AlertTriangle className="w-3 h-3" />
+                  {overdueCount} vencido{overdueCount > 1 ? "s" : ""}
+                </span>
+              )}
+              {upcomingCount > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/30 border border-amber-400/40 text-amber-100">
+                  <AlertTriangle className="w-3 h-3" />
+                  {upcomingCount} próximo{upcomingCount > 1 ? "s" : ""}
+                </span>
+              )}
+              {overdueCount === 0 && upcomingCount === 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/30 border border-emerald-400/40 text-emerald-100">
+                  <Smile className="w-3 h-3" />
+                  Sin alertas urgentes
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: Key numbers */}

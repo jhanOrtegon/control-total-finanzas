@@ -44,6 +44,7 @@ export default function ExpensesPage() {
   const [txAmount, setTxAmount] = useState<number | "">("");
   const [txCategory, setTxCategory] = useState("Comida");
   const [txMarkAsPaid, setTxMarkAsPaid] = useState(false);
+  const [txDueDate, setTxDueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -134,7 +135,7 @@ export default function ExpensesPage() {
       category: txType === "income" ? "Ingresos" : txCategory,
       type: "one-time",
       status: txType === "income" || txMarkAsPaid ? "paid" : "pending",
-      due_date: new Date().toISOString().slice(0, 10),
+      due_date: txDueDate,
     };
 
     const created = await addExpense(payload);
@@ -143,6 +144,7 @@ export default function ExpensesPage() {
       setTxAmount("");
       setTxCategory("Comida");
       setTxMarkAsPaid(false);
+      setTxDueDate(new Date().toISOString().slice(0, 10));
       setActiveTab("month");
       setHistoryPage(1);
     }
@@ -501,6 +503,18 @@ export default function ExpensesPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+                    {txType === "income" ? "Fecha" : "Fecha de Vencimiento"}
+                  </label>
+                  <input
+                    type="date"
+                    value={txDueDate}
+                    onChange={(e) => setTxDueDate(e.target.value)}
+                    className="w-full border rounded-xl py-2.5 px-3.5 text-sm font-semibold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:outline-none focus:border-indigo-400 transition"
+                  />
                 </div>
 
                 {txType === "expense" && (

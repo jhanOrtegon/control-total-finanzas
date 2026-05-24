@@ -48,9 +48,12 @@ export default function NotFound() {
         </div>
 
         {/* Call to action */}
-        <div className="pt-2">
-          <Link
-            href="/"
+        <div className="pt-2 flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => {
+              // Force a hard reload to clear stale Next.js RSC chunks
+              window.location.href = "/";
+            }}
             className={`w-full py-3.5 px-6 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 shadow-md ${
               theme === "dark"
                 ? "bg-slate-100 hover:bg-slate-200 text-slate-950 shadow-slate-950/50"
@@ -59,7 +62,7 @@ export default function NotFound() {
           >
             <Home className="w-4 h-4" />
             <span>Volver al Dashboard</span>
-          </Link>
+          </button>
         </div>
       </div>
     </div>

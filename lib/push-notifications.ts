@@ -14,11 +14,18 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 export async function registerServiceWorker(): Promise<void> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-  try {
-    await navigator.serviceWorker.register("/sw.js");
-  } catch (err) {
-    console.warn("[SW] Registration failed:", err);
+  // We disabled PWA to fix aggressive caching issues on mobile.
+  // This code now actively unregisters any lingering service workers to cure the 404s.
+  if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+        console.log("Unregistered lingering service worker to fix caching issues.");
+      }
+    } catch (error) {
+      console.error("Failed to unregister service worker:", error);
+    }
   }
 }
 

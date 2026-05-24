@@ -115,6 +115,7 @@ export default function SchedulePage() {
   ); // 1-12
   const [isPlanOpen, setIsPlanOpen] = useState(false);
   const [payingDebtId, setPayingDebtId] = useState<string | null>(null);
+  const [payingRecurrentTitle, setPayingRecurrentTitle] = useState<{title: string, category: string, remaining: number} | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number | "">("");
   const [obligationsPage, setObligationsPage] = useState(1);
   const [scheduleTab, setScheduleTab] = useState<"pending" | "paid">("pending");
@@ -177,16 +178,21 @@ export default function SchedulePage() {
     );
 
     // Mappings
-    const recurrentObligations = recurrentTemplates.map((temp) => ({
-      id: temp.id,
-      title: temp.title,
-      amount: temp.amount,
-      category: temp.category,
-      isRecurrentTemplate: true,
-      isPaid: paidRecurrents.some(
-        (p) => p.title.toLowerCase() === temp.title.toLowerCase(),
-      ),
-    }));
+    const recurrentObligations = recurrentTemplates.map((temp) => {
+      const monthPaymentsForTemp = paidRecurrents.filter(
+         p => p.title.toLowerCase() === temp.title.toLowerCase()
+      );
+      const amountPaid = monthPaymentsForTemp.reduce((acc, p) => acc + p.amount, 0);
+      return {
+        id: temp.id,
+        title: temp.title,
+        amount: temp.amount,
+        category: temp.category,
+        isRecurrentTemplate: true,
+        amountPaid,
+        isPaid: amountPaid >= temp.amount,
+      };
+    });
 
     const oneTimeObligations = oneTimeExpenses.map((e) => ({
       id: e.id,
@@ -333,9 +339,10 @@ export default function SchedulePage() {
     amount: number;
     category: string;
     isPaid: boolean;
+    amountPaid: number;
   }) => {
     if (ob.isPaid) {
-      const instance = expenses.find(
+      const instances = expenses.filter(
         (e) =>
           e.type === "one-time" &&
           e.status === "paid" &&
@@ -346,12 +353,17 @@ export default function SchedulePage() {
           ) &&
           e.title.toLowerCase() === ob.title.toLowerCase(),
       );
-      if (instance) await deleteExpense(instance.id);
+      for (const instance of instances) {
+        await deleteExpense(instance.id);
+      }
     } else {
+      const remaining = Math.max(0, ob.amount - ob.amountPaid);
+      if (remaining === 0) return;
+      
       const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
       await addExpense({
         title: ob.title,
-        amount: ob.amount,
+        amount: remaining,
         category: ob.category,
         type: "one-time",
         status: "paid",
@@ -466,6 +478,35 @@ export default function SchedulePage() {
     if (success) {
       setPayingDebtId(null);
       setPaymentAmount("");
+    }
+  };
+
+  const handlePayRecurrentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!payingRecurrentTitle || paymentAmount === "") return;
+    const amount = paymentAmount as number;
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Ingresa un monto de abono válido.");
+      return;
+    }
+    if (amount > payingRecurrentTitle.remaining) {
+      toast.warning("El monto excede el saldo pendiente. Se registrará por el valor ingresado.");
+    }
+    
+    const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+    const success = await addExpense({
+      title: payingRecurrentTitle.title,
+      amount: amount,
+      category: payingRecurrentTitle.category,
+      type: "one-time",
+      status: "paid",
+      due_date: `${selectedYear}-${pad}-15`,
+    });
+
+    if (success) {
+      setPayingRecurrentTitle(null);
+      setPaymentAmount("");
+      toast.success(`Abono de ${formatCurrency(amount)} registrado a ${payingRecurrentTitle.title}.`);
     }
   };
 
@@ -1018,6 +1059,11 @@ export default function SchedulePage() {
                             Motivo: {ob.deferReason}
                           </span>
                         )}
+                        {"isRecurrentTemplate" in ob && ob.amountPaid > 0 && !ob.isPaid && (
+                          <span className="text-[10px] text-indigo-500 font-bold ml-1">
+                            Abonado: {Math.floor((ob.amountPaid / ob.amount) * 100)}% ({formatCurrency(ob.amountPaid)})
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1080,12 +1126,26 @@ export default function SchedulePage() {
                           </div>
                         )
                       ) : "isRecurrentTemplate" in ob ? (
-                        <button
-                          onClick={() => handleToggleRecurrent(ob)}
-                          className="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950"
-                        >
-                          {ob.isPaid ? "Marcar Pendiente" : "Pagar Factura"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {!ob.isPaid && (
+                            <button
+                              onClick={() => {
+                                setPayingRecurrentTitle({ title: ob.title, category: ob.category, remaining: ob.amount - ob.amountPaid });
+                                setPaymentAmount(ob.amount - ob.amountPaid);
+                              }}
+                              className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                              <Coins className="w-3.5 h-3.5" />
+                              <span>Abonar</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleToggleRecurrent(ob as any)}
+                            className="px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-950"
+                          >
+                            {ob.isPaid ? "Marcar Pendiente" : "Pagar Restante"}
+                          </button>
+                        </div>
                       ) : "isIncome" in ob ? (
                         <button
                           onClick={() => handleDelete(ob.id)}
@@ -1248,6 +1308,85 @@ export default function SchedulePage() {
           }
         }}
       />
+
+      {/* Recurrent payment modal */}
+      {payingRecurrentTitle &&
+        createPortal(
+          <div className="fixed inset-0 z-9999 bg-slate-950/65 backdrop-blur-md supports-backdrop-filter:bg-slate-950/45 flex items-center justify-center p-4">
+            <div
+              className={`w-full max-w-md border rounded-3xl p-6 shadow-2xl relative space-y-4 ${
+                theme === "dark"
+                  ? "bg-slate-900 border-slate-800"
+                  : "bg-white border-slate-200"
+              }`}
+            >
+              <button
+                onClick={() => {
+                  setPayingRecurrentTitle(null);
+                  setPaymentAmount("");
+                }}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                title="Cerrar modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-black">
+                  Registrar Abono a Gasto Fijo
+                </h3>
+              </div>
+
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                Ingresa el monto que vas a abonar al gasto <strong>{payingRecurrentTitle.title}</strong>. 
+                Saldo pendiente: <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(payingRecurrentTitle.remaining)}</span>
+              </p>
+
+              <form onSubmit={handlePayRecurrentSubmit} className="space-y-4 pt-2">
+                <div>
+                  <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">
+                    Monto de Pago ($)
+                  </label>
+                  <CurrencyInput
+                    value={paymentAmount === "" ? undefined : paymentAmount}
+                    onChange={(val) => setPaymentAmount(val)}
+                    required
+                    placeholder="Ej. 250000"
+                    title="Monto de pago"
+                    className={`w-full border rounded-xl py-2.5 focus:outline-none transition ${
+                      theme === "dark"
+                        ? "bg-slate-950/80 border-slate-800 text-white"
+                        : "bg-slate-50 border-slate-200 text-slate-900"
+                    }`}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayingRecurrentTitle(null);
+                      setPaymentAmount("");
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl text-xs font-bold border border-slate-300 dark:border-slate-700 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 px-4 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-md cursor-pointer"
+                  >
+                    Confirmar Abono
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       <MonthCloseWizard month={selectedMonth} year={selectedYear} />
     </div>

@@ -114,8 +114,8 @@ export default function OverviewPage() {
       </div>
 
 
-      {/* KPIs Principales - Fila 1 */}
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
+      {/* KPIs Principales - Fila 1 (3 cards en desktop) */}
+      <div className="col-span-1 md:col-span-3 xl:col-span-4">
         <StatCard
           title="Ingresos del Mes"
           value={formatCurrency(totalIncome)}
@@ -134,25 +134,7 @@ export default function OverviewPage() {
         />
       </div>
 
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
-        <StatCard
-          title="Pagado (Mes)"
-          value={formatCurrency(monthSpent)}
-          variant={budgetUsedPct > 100 ? "danger" : budgetUsedPct > 80 ? "warning" : "default"}
-          accentColor={budgetUsedPct > 100 ? "rose" : budgetUsedPct > 80 ? "amber" : "indigo"}
-          progressPct={budgetUsedPct}
-          icon={<TrendingDown className="w-4 h-4" />}
-          footer={
-            <span>
-              {budgetLimit > 0
-                ? `${budgetUsedPct.toFixed(0)}% del presupuesto (${formatCurrency(budgetLimit)})`
-                : "Sin tope de presupuesto configurado"}
-            </span>
-          }
-        />
-      </div>
-
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
+      <div className="col-span-1 md:col-span-3 xl:col-span-4">
         <StatCard
           title="Disponible Real (Mes)"
           value={formatCurrency(realAvailableCash)}
@@ -172,7 +154,7 @@ export default function OverviewPage() {
         />
       </div>
 
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
+      <div className="col-span-1 md:col-span-3 xl:col-span-4">
         <StatCard
           title="Por Pagar (Mes)"
           value={formatCurrency(totalPendingToPay > 0 ? -totalPendingToPay : 0)}
@@ -186,7 +168,26 @@ export default function OverviewPage() {
         />
       </div>
 
-      <div className="col-span-1 md:col-span-3 xl:col-span-3">
+      {/* KPIs Principales - Fila 2 (2 cards en desktop) */}
+      <div className="col-span-1 md:col-span-3 xl:col-span-6">
+        <StatCard
+          title="Pagado (Mes)"
+          value={formatCurrency(monthSpent)}
+          variant={budgetUsedPct > 100 ? "danger" : budgetUsedPct > 80 ? "warning" : "default"}
+          accentColor={budgetUsedPct > 100 ? "rose" : budgetUsedPct > 80 ? "amber" : "indigo"}
+          progressPct={budgetUsedPct}
+          icon={<TrendingDown className="w-4 h-4" />}
+          footer={
+            <span>
+              {budgetLimit > 0
+                ? `${budgetUsedPct.toFixed(0)}% del presupuesto (${formatCurrency(budgetLimit)})`
+                : "Sin tope de presupuesto configurado"}
+            </span>
+          }
+        />
+      </div>
+
+      <div className="col-span-1 md:col-span-6 xl:col-span-6">
         <StatCard
           title="Deuda Restante"
           value={formatCurrency(totalOutstandingDebt)}

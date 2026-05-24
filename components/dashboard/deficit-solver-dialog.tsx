@@ -237,10 +237,10 @@ export function DeficitSolverDialog({
           }`}>
             <div>
               <span className={`text-[10px] font-bold uppercase tracking-wider ${isResolved ? "text-emerald-600" : "text-rose-600"}`}>
-                {isResolved ? "¡Déficit Resuelto!" : "Déficit Restante"}
+                {isResolved ? "Cupo Disponible (Proyectado)" : "Déficit Restante"}
               </span>
               <div className={`text-2xl font-black ${isResolved ? "text-emerald-500" : "text-rose-500"}`}>
-                {isResolved ? "$0" : formatCurrency(Math.max(0, newDeficit))}
+                {isResolved ? formatCurrency(Math.abs(newDeficit)) : formatCurrency(Math.max(0, newDeficit))}
               </div>
             </div>
             <div className="text-right">

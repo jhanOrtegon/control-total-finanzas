@@ -281,12 +281,15 @@ export function computeMonthlySummary(
   let pendingObligationsCount = 0;
   let totalPendingToPay = 0;
   for (const temp of recurrentTemplates) {
-    const isPaid = paidRecurrents.some(
+    const paymentsForTemp = paidRecurrents.filter(
       (p) => p.title.toLowerCase() === temp.title.toLowerCase(),
     );
+    const amountPaid = paymentsForTemp.reduce((acc, p) => acc + p.amount, 0);
+    const isPaid = amountPaid >= temp.amount;
+    
     if (!isPaid) {
       pendingObligationsCount++;
-      totalPendingToPay += temp.amount;
+      totalPendingToPay += Math.max(0, temp.amount - amountPaid);
     }
   }
 

@@ -20,8 +20,11 @@ import {
   Wallet,
   Activity,
   PiggyBank,
+  LogOut,
 } from "lucide-react";
 import { useTheme } from "@/providers/theme-provider";
+
+import { useAuth } from "@/providers/auth-provider";
 
 const navGroups = [
   {
@@ -76,6 +79,7 @@ export function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { theme } = useTheme();
+  const { signOut } = useAuth();
 
   return (
     <>
@@ -183,6 +187,29 @@ export function MobileNav() {
                 </div>
               </div>
             ))}
+            
+            {/* User Account / Sign Out */}
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5 px-1">
+                Cuenta
+              </div>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  signOut();
+                }}
+                className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-bold transition border cursor-pointer ${
+                  theme === "dark"
+                    ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20"
+                    : "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-4 h-4 shrink-0" />
+                  <span className="text-xs">Cerrar Sesión</span>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       )}

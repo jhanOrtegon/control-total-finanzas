@@ -40,7 +40,7 @@ export default function DashboardLayout({
       <Suspense fallback={<LoadingSpinner />}>
         <FinancePeriodProvider>
       <div
-        className={`min-h-screen flex font-sans transition-colors duration-300 ${
+        className={`h-[100dvh] flex font-sans transition-colors duration-300 overflow-hidden ${
           theme === "dark"
             ? "bg-slate-950 text-slate-100"
             : "bg-slate-50 text-slate-900"
@@ -50,7 +50,7 @@ export default function DashboardLayout({
 
         <Sidebar />
 
-        <div className="flex-1 flex flex-col min-w-0 relative z-10 overflow-x-hidden">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 relative z-10 overflow-x-hidden">
           <Header />
 
           {/* Extra bottom padding on mobile to avoid overlap with bottom tab bar */}
@@ -59,7 +59,7 @@ export default function DashboardLayout({
           </main>
 
           <footer
-            className={`border-t py-8 text-center text-slate-500 text-xs mt-12 relative z-10 mb-16 md:mb-0 ${
+            className={`border-t py-8 text-center text-slate-500 text-xs mt-auto relative z-10 mb-16 md:mb-0 shrink-0 ${
               theme === "dark"
                 ? "bg-slate-950/80 border-slate-900"
                 : "bg-white border-slate-200 shadow-inner"

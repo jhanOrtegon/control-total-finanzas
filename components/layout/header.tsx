@@ -123,16 +123,18 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          <div className="hidden sm:block">
+          <div className="block">
             <PeriodSelector compact />
           </div>
-          <SyncStatus />
+          <div className="hidden sm:block">
+            <SyncStatus />
+          </div>
           <AlertBadge />
           
           {/* Logout button visible on mobile directly in the header */}
           <button
             onClick={signOut}
-            className={`p-2 rounded-xl transition-colors shrink-0 md:hidden flex ${
+            className={`px-3 py-2 rounded-xl transition-colors shrink-0 md:hidden flex items-center gap-1.5 ${
               theme === "dark" 
                 ? "bg-rose-500/10 text-rose-400 hover:bg-rose-500/20" 
                 : "bg-rose-50 text-rose-600 hover:bg-rose-100"
@@ -140,6 +142,7 @@ export function Header() {
             title="Cerrar sesión"
           >
             <LogOut className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase">Salir</span>
           </button>
         </div>
       </div>

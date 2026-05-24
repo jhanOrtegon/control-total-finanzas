@@ -199,7 +199,7 @@ export function CommandPalette() {
       category: quickCategory,
       type: "one-time",
       status: "paid",
-      due_date: new Date().toISOString().slice(0, 10),
+      due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
     });
 
     if (success !== null) {
@@ -228,7 +228,7 @@ export function CommandPalette() {
       category: "Ingresos",
       type: "one-time",
       status: "paid",
-      due_date: new Date().toISOString().slice(0, 10),
+      due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
     });
 
     if (success !== null) {

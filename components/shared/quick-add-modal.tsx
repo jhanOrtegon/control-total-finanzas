@@ -32,6 +32,9 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
   const [category, setCategory] = useState("Comida");
   const [targetMonthOption, setTargetMonthOption] = useState<"current" | "next">("current");
   const [markAsPaid, setMarkAsPaid] = useState(false);
+  const [dueDate, setDueDate] = useState<string>(
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10)
+  );
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +46,7 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
       setCategory("Comida");
       setTargetMonthOption("current");
       setMarkAsPaid(false);
+      setDueDate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10));
       setTimeout(() => titleRef.current?.focus(), 100);
     }
   }, [open]);
@@ -90,7 +94,7 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
         type: "one-time",
         status: txType === "income" || markAsPaid ? "paid" : "pending",
         target_month,
-        due_date: new Date().toISOString().slice(0, 10),
+        due_date: txType === "expense" ? dueDate : new Date().toISOString().slice(0, 10),
       });
       onClose();
     } finally {
@@ -263,6 +267,21 @@ export function QuickAddModal({ open, onClose }: QuickAddModalProps) {
                 </button>
               </div>
             </div>
+
+            {/* Due Date (only for expense) */}
+            {txType === "expense" && (
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  Fecha de Vencimiento
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="w-full border rounded-xl py-2.5 px-3.5 text-sm font-semibold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-400 transition"
+                />
+              </div>
+            )}
 
             {/* Mark as paid */}
             {txType === "expense" && (

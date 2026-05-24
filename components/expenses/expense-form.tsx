@@ -28,6 +28,9 @@ export function ExpenseForm({
   const [amount, setAmount] = useState<number | "">("");
   const [category, setCategory] = useState("Comida");
   const [status, setStatus] = useState<"pending" | "paid">("pending");
+  const [dueDate, setDueDate] = useState<string>(
+    new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10)
+  );
 
   // Select dropdown open states
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -40,6 +43,7 @@ export function ExpenseForm({
     setAmount("");
     setCategory("Comida");
     setStatus("pending");
+    setDueDate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10));
   };
 
   // Populate form if editing
@@ -50,6 +54,7 @@ export function ExpenseForm({
       setAmount(editingExpense.amount);
       setCategory(editingExpense.category);
       setStatus(editingExpense.status);
+      setDueDate(editingExpense.due_date || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10));
     } else {
       resetForm();
     }
@@ -93,7 +98,7 @@ export function ExpenseForm({
       category,
       type: "recurrent",
       status: statusToSave,
-      due_date: null,
+      due_date: dueDate,
     });
 
     if (success !== false && !editingExpense) {
@@ -207,6 +212,21 @@ export function ExpenseForm({
               ))}
             </div>
           )}
+        </div>
+
+        {/* Due Date */}
+        <div>
+          <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1.5">Fecha de Vencimiento</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className={`w-full border rounded-xl py-2.5 px-3.5 text-sm font-semibold focus:outline-none transition ${
+              theme === "dark"
+                ? "bg-slate-950/80 border-slate-800 text-white placeholder-slate-600 focus:border-slate-400"
+                : "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-slate-450"
+            }`}
+          />
         </div>
 
         {category !== "Ingresos" && (

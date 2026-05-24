@@ -39,7 +39,7 @@ export function SmartExpenseInput() {
         category: data.category,
         type: "one-time",
         status: "paid",
-        due_date: null,
+        due_date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10),
         target_month: null,
       });
 

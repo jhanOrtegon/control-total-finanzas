@@ -16,7 +16,7 @@ import { formatCurrency } from "@/lib/utils";
 const ITEMS_PER_PAGE = 5;
 
 export default function DebtsPage() {
-  const { debts, addDebt, updateDebt, deleteDebt, recordDebtPayment } =
+  const { debts, addDebt, updateDebt, deleteDebt, recordDebtPayment, undoDebtPayment, debtPayments } =
     useFinance();
 
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
@@ -138,6 +138,25 @@ export default function DebtsPage() {
     await recordDebtPayment(payingDebtId, amount);
   };
 
+  const handleUndoLastPayment = async (debtId: string) => {
+    const paymentsForDebt = debtPayments.filter(p => p.debt_id === debtId);
+    if (paymentsForDebt.length === 0) return;
+    
+    paymentsForDebt.sort((a, b) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime());
+    const latestPayment = paymentsForDebt[0];
+    
+    const ok = await confirm({
+      title: "Revertir último abono",
+      description: `¿Estás seguro de deshacer el último abono de ${formatCurrency(latestPayment.amount)}? El saldo de la deuda aumentará.`,
+      confirmLabel: "Revertir Abono",
+      variant: "danger",
+    });
+    
+    if (ok) {
+      await undoDebtPayment(latestPayment.id);
+    }
+  };
+
   const activePayingDebt = debts.find((d) => d.id === payingDebtId);
 
   return (
@@ -180,10 +199,12 @@ export default function DebtsPage() {
                     key={debt.id}
                     debt={debt}
                     isEditing={editingDebt?.id === debt.id}
+                    hasPayments={debtPayments.some(p => p.debt_id === debt.id)}
                     onAbonarClick={setPayingDebtId}
                     onStartEdit={setEditingDebt}
                     onDelete={handleDelete}
                     onViewDetail={setDetailDebt}
+                    onUndoLastPayment={handleUndoLastPayment}
                   />
                 ))}
               </div>

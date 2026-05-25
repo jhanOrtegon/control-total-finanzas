@@ -4,24 +4,28 @@ import React from "react";
 import { Debt } from "@/types";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
-import { Coins, Edit3, Trash2, Eye, CalendarDays } from "lucide-react";
+import { Coins, Edit3, Trash2, Eye, CalendarDays, Undo2 } from "lucide-react";
 
 interface DebtCardProps {
   debt: Debt;
   isEditing: boolean;
+  hasPayments?: boolean;
   onAbonarClick: (id: string) => void;
   onStartEdit: (debt: Debt) => void;
   onDelete: (id: string) => void;
   onViewDetail: (debt: Debt) => void;
+  onUndoLastPayment?: (id: string) => void;
 }
 
 export function DebtCard({
   debt,
   isEditing,
+  hasPayments,
   onAbonarClick,
   onStartEdit,
   onDelete,
   onViewDetail,
+  onUndoLastPayment,
 }: DebtCardProps) {
   const { theme } = useTheme();
   const isFullyPaid = debt.remaining_amount <= 0;
@@ -139,15 +143,27 @@ export function DebtCard({
       </div>
 
       {/* Payoff Actions */}
-      <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-800/60 pt-3">
-        <button
-          onClick={() => onAbonarClick(debt.id)}
-          disabled={isFullyPaid}
-          className="bg-emerald-600/10 text-emerald-650 dark:text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/25 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1"
-        >
-          <Coins className="w-3.5 h-3.5 animate-bounce" />
-          {isFullyPaid ? "Deuda Saldada" : "Abonar a Deuda"}
-        </button>
+      <div className="flex flex-wrap justify-between items-center gap-3 border-t border-slate-200 dark:border-slate-800/60 pt-3">
+        <div className="flex items-center gap-2">
+          {onUndoLastPayment && hasPayments && (
+            <button
+              onClick={() => onUndoLastPayment(debt.id)}
+              className="bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/20 hover:bg-amber-500/25 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1"
+              title="Revertir último abono"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Deshacer Abono</span>
+            </button>
+          )}
+          <button
+            onClick={() => onAbonarClick(debt.id)}
+            disabled={isFullyPaid}
+            className="bg-emerald-600/10 text-emerald-650 dark:text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/25 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1"
+          >
+            <Coins className="w-3.5 h-3.5 animate-bounce" />
+            {isFullyPaid ? "Deuda Saldada" : "Abonar a Deuda"}
+          </button>
+        </div>
 
         <div className="flex gap-2">
           <button

@@ -126,7 +126,7 @@ export function isDeferDebtExpense(expense: Expense) {
 }
 
 export function isSystemExpense(expense: Expense) {
-  return expense.category === "LOG" || expense.title.startsWith("CONFIG:") || expense.title.startsWith("LOG:");
+  return expense.category === "LOG" || expense.title.startsWith("CONFIG:") || expense.title.startsWith("LOG:") || expense.title.startsWith("DEFER_DEBT:");
 }
 
 export function getUserProfileConfig(expenses: Expense[]) {
@@ -362,17 +362,9 @@ export function computeMonthlySummary(
   const prevYear = month === 1 ? year - 1 : year;
   const prev = computeRawMonthlySummary(budget, expenses, debts, prevMonth, prevYear);
   
-  let realAvailableCash = current.realAvailableCash;
-
-  // Si el usuario aún no ha registrado ingresos en el mes actual (ej. le pagan a fin de mes),
-  // y tiene un sobrante del mes anterior, proyectamos ese sobrante restando solo los gastos variables.
-  if (current.totalIncome === 0 && prev.realAvailableCash > 0) {
-    realAvailableCash = prev.realAvailableCash - current.variableSpent;
-  }
-
   return {
     ...current,
-    realAvailableCash,
+    realAvailableCash: prev.realAvailableCash,
   };
 }
 

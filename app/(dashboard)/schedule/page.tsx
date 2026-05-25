@@ -374,13 +374,15 @@ export default function SchedulePage() {
       if (remaining === 0) return;
       
       const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+      const targetDate = `${selectedYear}-${pad}-15`;
       await addExpense({
         title: ob.title,
         amount: remaining,
         category: ob.category,
         type: "one-time",
         status: "paid",
-        due_date: `${selectedYear}-${pad}-15`,
+        due_date: targetDate,
+        paid_date: targetDate,
       });
     }
   };
@@ -440,7 +442,8 @@ export default function SchedulePage() {
       } else if ("isOneTime" in ob) {
         await handleToggleOneTime(ob as any);
       } else if ("isDebt" in ob) {
-        await recordDebtPayment(ob.id, ob.amount);
+        const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+        await recordDebtPayment(ob.id, ob.amount, `${selectedYear}-${pad}-15`);
       }
     }
 
@@ -542,7 +545,8 @@ export default function SchedulePage() {
       toast.error("Ingresa un monto de abono válido.");
       return;
     }
-    const success = await recordDebtPayment(payingDebtId, amount);
+    const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+    const success = await recordDebtPayment(payingDebtId, amount, `${selectedYear}-${pad}-15`);
     if (success) {
       setPayingDebtId(null);
       setPaymentAmount("");
@@ -562,13 +566,15 @@ export default function SchedulePage() {
     }
     
     const pad = selectedMonth < 10 ? `0${selectedMonth}` : selectedMonth;
+    const targetDate = `${selectedYear}-${pad}-15`;
     const success = await addExpense({
       title: payingRecurrentTitle.title,
       amount: amount,
       category: payingRecurrentTitle.category,
       type: "one-time",
       status: "paid",
-      due_date: `${selectedYear}-${pad}-15`,
+      due_date: targetDate,
+      paid_date: targetDate,
     });
 
     if (success) {

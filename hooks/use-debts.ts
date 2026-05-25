@@ -163,7 +163,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
     }, "Eliminando deuda...");
   };
 
-  const recordDebtPayment = async (debtId: string, amount: number) => {
+  const recordDebtPayment = async (debtId: string, amount: number, paymentDate?: string) => {
     if (!userId) return false;
     return withLoading(async () => {
       try {
@@ -182,7 +182,7 @@ export function useDebts(userId: string | undefined, onPaymentSuccess?: () => vo
         if (error) throw error;
 
         if (data) {
-          const paidAt = new Date().toISOString();
+          const paidAt = paymentDate ? new Date(paymentDate).toISOString() : new Date().toISOString();
           let expenseId: string | null = null;
 
           const { data: expData, error: expError } = await insforge.database

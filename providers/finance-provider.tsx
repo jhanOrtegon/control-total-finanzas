@@ -383,9 +383,9 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   }, [deleteDebtRaw, debts, touchSync, writeSystemLog]);
 
   const recordDebtPayment = useCallback(
-    async (debtId: string, amount: number) => {
+    async (debtId: string, amount: number, paymentDate?: string) => {
       const debt = debts.find(d => d.id === debtId);
-      const ok = await recordDebtPaymentRaw(debtId, amount);
+      const ok = await recordDebtPaymentRaw(debtId, amount, paymentDate);
       if (ok && debt) {
         await Promise.all([refetchExpenses(), refetchPayments()]);
         touchSync();

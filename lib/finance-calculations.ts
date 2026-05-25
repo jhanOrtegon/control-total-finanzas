@@ -126,7 +126,7 @@ export function isDeferDebtExpense(expense: Expense) {
 }
 
 export function isSystemExpense(expense: Expense) {
-  return expense.title.startsWith("CONFIG:") || expense.title.startsWith("LOG:");
+  return expense.category === "LOG" || expense.title.startsWith("CONFIG:") || expense.title.startsWith("LOG:");
 }
 
 export function getUserProfileConfig(expenses: Expense[]) {
@@ -182,7 +182,7 @@ export interface MonthlyFinanceSummary {
   totalPendingToPay: number;
 }
 
-export function computeMonthlySummary(
+export function computeRawMonthlySummary(
   budget: UserBudget | null,
   expenses: Expense[],
   debts: Debt[],
@@ -346,6 +346,28 @@ export function computeMonthlySummary(
     dtiRatio,
     pendingObligationsCount,
     totalPendingToPay,
+  };
+}
+
+export function computeMonthlySummary(
+  budget: UserBudget | null,
+  expenses: Expense[],
+  debts: Debt[],
+  month: number,
+  year: number,
+): MonthlyFinanceSummary {
+  const current = computeRawMonthlySummary(budget, expenses, debts, month, year);
+  
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prev = computeRawMonthlySummary(budget, expenses, debts, prevMonth, prevYear);
+  
+  const prevLeftover = prev.totalIncome - prev.monthSpent - prev.totalPendingToPay - prev.savingsGoal;
+  const realAvailableCash = prevLeftover - current.monthSpent - current.totalPendingToPay - current.savingsGoal;
+
+  return {
+    ...current,
+    realAvailableCash,
   };
 }
 

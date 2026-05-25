@@ -362,8 +362,13 @@ export function computeMonthlySummary(
   const prevYear = month === 1 ? year - 1 : year;
   const prev = computeRawMonthlySummary(budget, expenses, debts, prevMonth, prevYear);
   
-  const prevLeftover = prev.totalIncome - prev.monthSpent - prev.totalPendingToPay - prev.savingsGoal;
-  const realAvailableCash = prevLeftover - current.monthSpent - current.totalPendingToPay - current.savingsGoal;
+  let realAvailableCash = current.realAvailableCash;
+
+  // Si el usuario aún no ha registrado ingresos en el mes actual (ej. le pagan a fin de mes),
+  // y tiene un sobrante del mes anterior, proyectamos ese sobrante restando solo los gastos variables.
+  if (current.totalIncome === 0 && prev.realAvailableCash > 0) {
+    realAvailableCash = prev.realAvailableCash - current.variableSpent;
+  }
 
   return {
     ...current,

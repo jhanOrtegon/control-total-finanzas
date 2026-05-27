@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -77,15 +78,20 @@ const BOTTOM_TABS = [
 
 export function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { theme } = useTheme();
   const { signOut } = useAuth();
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const portalContent = (
     <>
       {/* ── Bottom Tab Bar (always visible on mobile) ───────────────── */}
       <nav
-        className={`fixed bottom-0 left-0 right-0 z-40 md:hidden border-t flex items-center justify-around h-16 safe-area-bottom ${
+        className={`fixed bottom-0 left-0 right-0 z-50 md:hidden border-t flex items-center justify-around h-16 safe-area-bottom ${
           theme === "dark"
             ? "bg-slate-950/95 border-slate-800 backdrop-blur-xl"
             : "bg-white/95 border-slate-200 backdrop-blur-xl shadow-2xl shadow-slate-900/10"
@@ -123,20 +129,9 @@ export function MobileNav() {
       </nav>
 
       {/* ── Full-screen drawer for all sections ─────────────────────── */}
-      {/* Hamburger button (only shown in the header, triggers the full drawer) */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
-          aria-label="Abrir menú completo"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      )}
-
       {isOpen && (
         <div
-          className={`fixed inset-0 z-50 flex flex-col md:hidden ${
+          className={`fixed inset-0 z-[60] flex flex-col md:hidden ${
             theme === "dark" ? "bg-slate-950 text-white" : "bg-white text-slate-900"
           }`}
         >
@@ -213,6 +208,23 @@ export function MobileNav() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <>
+      {/* Hamburger button (only shown in the header, triggers the full drawer) */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+          aria-label="Abrir menú completo"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
+
+      {mounted && typeof document !== "undefined" && createPortal(portalContent, document.body)}
     </>
   );
 }

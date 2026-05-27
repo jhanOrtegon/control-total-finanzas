@@ -107,6 +107,11 @@ export function useExpenses(userId: string | undefined) {
       due_date: payload.due_date || null,
       paid_date: payload.status === "paid" ? payload.paid_date || new Date().toISOString() : null,
     };
+
+    if (isPastMonth(newPayload as Expense)) {
+      toast.error("No se pueden crear transacciones en meses anteriores al actual.");
+      return null;
+    }
     
     // Optimsitic inject
     const tempExpense: Expense = {

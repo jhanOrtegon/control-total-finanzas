@@ -127,7 +127,7 @@ export function DueAlerts() {
           <CalendarClock className="w-4 h-4" />
           Por vencer en {month}/{year} ({pendingItems.length})
         </h3>
-        <ul className="space-y-2">
+        <ul className="space-y-2 max-h-[264px] overflow-y-auto pr-2 custom-scrollbar">
           {pendingItems.map((item, index) => (
             <li
               key={`${item.id}-${index}`}

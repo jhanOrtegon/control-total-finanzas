@@ -263,7 +263,7 @@ export default function SchedulePage() {
     
     let primasIncome = 0;
     if (
-      (monthNum === 6 || monthNum === 12) &&
+      (monthNum === 7 || monthNum === 1) &&
       profile.profileType === "empleado" &&
       (profile.contractType === "indefinido" || profile.contractType === "fijo")
     ) {
@@ -302,18 +302,14 @@ export default function SchedulePage() {
   const maxYearlyDue = Math.max(...yearlyChartData.map((d) => d.totalDue), 100);
   const selectedStats = getMonthlyStats(selectedMonth);
   
-  const monthlySummary = useMemo(
-    () => computeMonthlySummary(budget, expenses, debts, selectedMonth, selectedYear),
-    [budget, expenses, debts, selectedMonth, selectedYear]
-  );
-  
   const projectedPaymentsFlow = selectedStats.totalDue;
   const realPaymentsFlow = selectedStats.totalPaid;
   const programmedSavings = budget?.monthly_savings_goal || 0;
   
-  // Usamos el cálculo oficial del sistema que respeta la preferencia de arrastre del usuario
-  const projectedAvailableAfterPayments = monthlySummary.realAvailableCash;
-  const realAvailableAfterPayments = monthlySummary.realAvailableCash;
+  const projectedAvailableAfterPayments =
+    selectedStats.totalIncome - projectedPaymentsFlow - programmedSavings;
+  const realAvailableAfterPayments =
+    selectedStats.totalIncome - realPaymentsFlow - programmedSavings;
   const filteredObligations = useMemo(
     () => {
       let obs = selectedStats.allObligations.filter((ob) =>

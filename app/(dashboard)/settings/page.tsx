@@ -238,11 +238,11 @@ export default function SettingsPage() {
             
             {profileType === "empleado" && (contractType === "indefinido" || contractType === "fijo") ? (
               <p className="text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
-                Se calcularán automáticamente las <strong>Primas Legales</strong> (medio salario) sumadas a tus ingresos en los meses de Junio y Diciembre.
+                Se calcularán automáticamente las <strong>Primas Legales</strong> (medio salario) sumadas a tus ingresos en los meses de Julio y Enero.
               </p>
             ) : profileType !== "desempleado" ? (
               <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
-                Bajo este perfil, <strong>no</strong> se calcularán primas automáticas en junio y diciembre.
+                Bajo este perfil, <strong>no</strong> se calcularán primas automáticas en julio y enero.
               </p>
             ) : null}
           </div>

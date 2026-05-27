@@ -182,7 +182,7 @@ export interface MonthlyFinanceSummary {
   totalPendingToPay: number;
 }
 
-export function computeRawMonthlySummary(
+export function computeMonthlySummary(
   budget: UserBudget | null,
   expenses: Expense[],
   debts: Debt[],
@@ -257,10 +257,10 @@ export function computeRawMonthlySummary(
   const profile = getUserProfileConfig(expenses);
   const baseIncome = getYearlyIncome(expenses, year, budget?.monthly_income || 0);
   const savingsGoal = budget?.monthly_savings_goal || 0;
-  // Prima legal: se paga en junio y diciembre (Colombia, equivale a medio salario mensual)
+  // Prima legal: se paga en junio y diciembre, pero contablemente se refleja en Julio y Enero
   let prima = 0;
   if (
-    (month === 6 || month === 12) &&
+    (month === 7 || month === 1) &&
     profile.profileType === "empleado" &&
     (profile.contractType === "indefinido" || profile.contractType === "fijo")
   ) {
@@ -349,24 +349,7 @@ export function computeRawMonthlySummary(
   };
 }
 
-export function computeMonthlySummary(
-  budget: UserBudget | null,
-  expenses: Expense[],
-  debts: Debt[],
-  month: number,
-  year: number,
-): MonthlyFinanceSummary {
-  const current = computeRawMonthlySummary(budget, expenses, debts, month, year);
-  
-  const prevMonth = month === 1 ? 12 : month - 1;
-  const prevYear = month === 1 ? year - 1 : year;
-  const prev = computeRawMonthlySummary(budget, expenses, debts, prevMonth, prevYear);
-  
-  return {
-    ...current,
-    realAvailableCash: prev.realAvailableCash,
-  };
-}
+
 
 export function computeDebtTotals(debts: Debt[]) {
   const totalOutstandingDebt = debts.reduce(

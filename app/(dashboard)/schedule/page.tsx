@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFinance } from "@/providers/finance-provider";
-import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense, getUserProfileConfig, getYearlyIncome, isSystemExpense, computeMonthlySummary } from "@/lib/finance-calculations";
+import { isDateInMonth, isDebtApplicableToMonth, getExpenseDateInMonth, isDeferDebtExpense, getUserProfileConfig, getYearlyIncome, isSystemExpense } from "@/lib/finance-calculations";
 import { useTheme } from "@/providers/theme-provider";
 import { formatCurrency } from "@/lib/utils";
 import { getCategoryEmoji, getCategoryColor } from "@/lib/constants";
@@ -301,19 +301,13 @@ export default function SchedulePage() {
 
   const maxYearlyDue = Math.max(...yearlyChartData.map((d) => d.totalDue), 100);
   const selectedStats = getMonthlyStats(selectedMonth);
-  
-  const monthlySummary = useMemo(
-    () => computeMonthlySummary(budget, expenses, debts, selectedMonth, selectedYear),
-    [budget, expenses, debts, selectedMonth, selectedYear]
-  );
-  
   const projectedPaymentsFlow = selectedStats.totalDue;
   const realPaymentsFlow = selectedStats.totalPaid;
   const programmedSavings = budget?.monthly_savings_goal || 0;
-  
-  // Usamos el cálculo oficial del sistema que respeta la preferencia de arrastre del usuario
-  const projectedAvailableAfterPayments = monthlySummary.realAvailableCash;
-  const realAvailableAfterPayments = monthlySummary.realAvailableCash;
+  const projectedAvailableAfterPayments =
+    selectedStats.totalIncome - projectedPaymentsFlow - programmedSavings;
+  const realAvailableAfterPayments =
+    selectedStats.totalIncome - realPaymentsFlow - programmedSavings;
   const filteredObligations = useMemo(
     () => {
       let obs = selectedStats.allObligations.filter((ob) =>

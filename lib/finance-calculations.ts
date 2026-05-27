@@ -182,7 +182,7 @@ export interface MonthlyFinanceSummary {
   totalPendingToPay: number;
 }
 
-export function computeRawMonthlySummary(
+export function computeMonthlySummary(
   budget: UserBudget | null,
   expenses: Expense[],
   debts: Debt[],
@@ -349,24 +349,7 @@ export function computeRawMonthlySummary(
   };
 }
 
-export function computeMonthlySummary(
-  budget: UserBudget | null,
-  expenses: Expense[],
-  debts: Debt[],
-  month: number,
-  year: number,
-): MonthlyFinanceSummary {
-  const current = computeRawMonthlySummary(budget, expenses, debts, month, year);
-  
-  const prevMonth = month === 1 ? 12 : month - 1;
-  const prevYear = month === 1 ? year - 1 : year;
-  const prev = computeRawMonthlySummary(budget, expenses, debts, prevMonth, prevYear);
-  
-  return {
-    ...current,
-    realAvailableCash: prev.realAvailableCash,
-  };
-}
+
 
 export function computeDebtTotals(debts: Debt[]) {
   const totalOutstandingDebt = debts.reduce(

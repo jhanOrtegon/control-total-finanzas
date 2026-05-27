@@ -20,6 +20,9 @@ import {
   computeMonthlySummary,
   spentByCategoryInMonth,
   isSystemExpense,
+  getYearlyIncome,
+  getYearlyBudget,
+  getYearlySavingsGoal,
   type MonthlyFinanceSummary,
 } from "@/lib/finance-calculations";
 import { buildFinancialEvents } from "@/lib/financial-events";
@@ -525,9 +528,19 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     [expenses, debtPayments, debts],
   );
 
+  const effectiveBudget = useMemo(() => {
+    if (!budget) return null;
+    return {
+      ...budget,
+      monthly_income: getYearlyIncome(expenses, currentYear, budget.monthly_income),
+      monthly_budget: getYearlyBudget(expenses, currentYear, budget.monthly_budget),
+      monthly_savings_goal: getYearlySavingsGoal(expenses, currentYear, budget.monthly_savings_goal),
+    };
+  }, [budget, expenses, currentYear]);
+
   const value = useMemo<FinanceContextType>(
     () => ({
-      budget,
+      budget: effectiveBudget,
       expenses,
       debts,
       debtPayments,
@@ -566,7 +579,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       applySuggestedEnvelopes: applySuggestedEnvelopesWrapped,
     }),
     [
-      budget,
+      effectiveBudget,
       expenses,
       debts,
       debtPayments,

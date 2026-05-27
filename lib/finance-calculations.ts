@@ -157,6 +157,44 @@ export function getYearlyIncome(expenses: Expense[], year: number, defaultIncome
   return defaultIncome;
 }
 
+export function getYearlyBudget(expenses: Expense[], year: number, defaultBudget: number) {
+  const exactMatch = expenses.find(e => e.title === `CONFIG:BUDGET:${year}`);
+  if (exactMatch && exactMatch.amount > 0) {
+    return exactMatch.amount;
+  }
+  
+  const previous = expenses
+    .filter(e => e.title.startsWith("CONFIG:BUDGET:"))
+    .map(e => ({ year: parseInt(e.title.split(":")[2]), amount: e.amount }))
+    .filter(s => !isNaN(s.year) && s.year < year && s.amount > 0)
+    .sort((a, b) => b.year - a.year);
+    
+  if (previous.length > 0) {
+    return previous[0].amount;
+  }
+
+  return defaultBudget;
+}
+
+export function getYearlySavingsGoal(expenses: Expense[], year: number, defaultSavings: number) {
+  const exactMatch = expenses.find(e => e.title === `CONFIG:SAVINGS:${year}`);
+  if (exactMatch && exactMatch.amount > 0) {
+    return exactMatch.amount;
+  }
+  
+  const previous = expenses
+    .filter(e => e.title.startsWith("CONFIG:SAVINGS:"))
+    .map(e => ({ year: parseInt(e.title.split(":")[2]), amount: e.amount }))
+    .filter(s => !isNaN(s.year) && s.year < year && s.amount > 0)
+    .sort((a, b) => b.year - a.year);
+    
+  if (previous.length > 0) {
+    return previous[0].amount;
+  }
+
+  return defaultSavings;
+}
+
 export function getRecurrentTemplates(expenses: Expense[]) {
   return expenses.filter((e) => e.type === "recurrent");
 }
@@ -256,7 +294,7 @@ export function computeMonthlySummary(
 
   const profile = getUserProfileConfig(expenses);
   const baseIncome = getYearlyIncome(expenses, year, budget?.monthly_income || 0);
-  const savingsGoal = budget?.monthly_savings_goal || 0;
+  const savingsGoal = getYearlySavingsGoal(expenses, year, budget?.monthly_savings_goal || 0);
   // Prima legal: se paga en junio y diciembre, pero contablemente se refleja en Julio y Enero
   let prima = 0;
   if (

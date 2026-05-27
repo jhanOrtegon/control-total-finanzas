@@ -17,9 +17,7 @@ export default function SettingsPage() {
 
   const [profileType, setProfileType] = useState<string>("empleado");
   const [contractType, setContractType] = useState<string>("indefinido");
-  const [savingsGoal, setSavingsGoal] = useState<number | "">("");
-  const [budgetLimit, setBudgetLimit] = useState<number | "">("");
-  const [yearlySalaries, setYearlySalaries] = useState<{ year: number; amount: number; id?: string }[]>([]);
+  const [yearlyConfigs, setYearlyConfigs] = useState<{ year: number; income: number; budget: number; savingsGoal: number; id?: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDeveloperMode, setIsDeveloperMode] = useState(false);
   const [logoClicks, setLogoClicks] = useState(0);
@@ -37,52 +35,62 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (budget) {
-      setSavingsGoal(budget.monthly_savings_goal > 0 ? budget.monthly_savings_goal : "");
-      setBudgetLimit(budget.monthly_budget > 0 ? budget.monthly_budget : "");
-    }
-    
     let pType = "empleado";
     let cType = "indefinido";
-    const salaries: { year: number; amount: number; id?: string }[] = [];
+    const configsMap = new Map<number, { year: number; income: number; budget: number; savingsGoal: number; id?: string }>();
     
+    const getOrAddYear = (y: number) => {
+      if (!configsMap.has(y)) {
+        configsMap.set(y, { year: y, income: 0, budget: 0, savingsGoal: 0 });
+      }
+      return configsMap.get(y)!;
+    };
+
     expenses.forEach(e => {
       if (e.title === "CONFIG:PROFILE_TYPE") pType = e.category;
       if (e.title === "CONFIG:CONTRACT_TYPE") cType = e.category;
-      if (e.title.startsWith("CONFIG:SALARY:")) {
-        const year = parseInt(e.title.split(":")[2]);
+      
+      const parts = e.title.split(":");
+      if (parts[0] === "CONFIG" && parts.length >= 3) {
+        const year = parseInt(parts[2]);
         if (!isNaN(year)) {
-          salaries.push({ year, amount: e.amount, id: e.id });
+          const cfg = getOrAddYear(year);
+          if (parts[1] === "SALARY") cfg.income = e.amount;
+          if (parts[1] === "BUDGET") cfg.budget = e.amount;
+          if (parts[1] === "SAVINGS") cfg.savingsGoal = e.amount;
         }
       }
     });
 
-    if (salaries.length === 0 && budget && budget.monthly_income > 0) {
-      salaries.push({ year: new Date().getFullYear(), amount: budget.monthly_income });
-    } else {
-      salaries.sort((a, b) => b.year - a.year);
+    const currentYear = new Date().getFullYear();
+    if (configsMap.size === 0 && budget) {
+      getOrAddYear(currentYear).income = budget.monthly_income > 0 ? budget.monthly_income : 0;
+      getOrAddYear(currentYear).budget = budget.monthly_budget > 0 ? budget.monthly_budget : 0;
+      getOrAddYear(currentYear).savingsGoal = budget.monthly_savings_goal > 0 ? budget.monthly_savings_goal : 0;
     }
+
+    const configs = Array.from(configsMap.values()).sort((a, b) => b.year - a.year);
     
     setProfileType(pType);
     setContractType(cType);
-    setYearlySalaries(salaries);
+    setYearlyConfigs(configs);
   }, [budget, expenses]);
 
   const addYear = () => {
-    const nextYear = yearlySalaries.length > 0 ? Math.max(...yearlySalaries.map(s => s.year)) + 1 : new Date().getFullYear();
-    setYearlySalaries([{ year: nextYear, amount: 0 }, ...yearlySalaries].sort((a, b) => b.year - a.year));
+    const nextYear = yearlyConfigs.length > 0 ? Math.max(...yearlyConfigs.map(s => s.year)) + 1 : new Date().getFullYear();
+    setYearlyConfigs([{ year: nextYear, income: 0, budget: 0, savingsGoal: 0 }, ...yearlyConfigs].sort((a, b) => b.year - a.year));
   };
 
   const removeYear = (idx: number) => {
-    const newSalaries = [...yearlySalaries];
-    newSalaries.splice(idx, 1);
-    setYearlySalaries(newSalaries);
+    const newConfigs = [...yearlyConfigs];
+    newConfigs.splice(idx, 1);
+    setYearlyConfigs(newConfigs);
   };
 
-  const updateYearSalary = (idx: number, field: "year" | "amount", val: number) => {
-    const newSalaries = [...yearlySalaries];
-    newSalaries[idx] = { ...newSalaries[idx], [field]: val };
-    setYearlySalaries(newSalaries);
+  const updateYearConfig = (idx: number, field: keyof typeof yearlyConfigs[0], val: number) => {
+    const newConfigs = [...yearlyConfigs];
+    newConfigs[idx] = { ...newConfigs[idx], [field as any]: val };
+    setYearlyConfigs(newConfigs);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -90,16 +98,15 @@ export default function SettingsPage() {
     setLoading(true);
     
     try {
-      const savVal = (savingsGoal as number) || 0;
-      const budVal = (budgetLimit as number) || 0;
-      
-      // Compute the latest salary for the global budget (used for generic DTI limits if no year specified)
       const currentYear = new Date().getFullYear();
-      const latestSalaryObj = yearlySalaries.find(s => s.year === currentYear) || yearlySalaries[0];
-      const latestSalary = latestSalaryObj?.amount || 0;
+      const latestConfig = yearlyConfigs.find(s => s.year === currentYear) || yearlyConfigs[0];
+      
+      const latestSalary = latestConfig?.income || 0;
+      const latestBudget = latestConfig?.budget || 0;
+      const latestSavings = latestConfig?.savingsGoal || 0;
 
-      // 1. Save standard budget limits
-      await updateBudget(latestSalary, budVal, savVal);
+      // 1. Save standard budget limits (fallback/global)
+      await updateBudget(latestSalary, latestBudget, latestSavings);
 
       // 2. Clear old config silently & write new ones
       if (budget?.user_id) {
@@ -114,12 +121,32 @@ export default function SettingsPage() {
           { user_id: budget.user_id, title: "CONFIG:CONTRACT_TYPE", amount: 0, category: contractType, type: "one-time", status: "paid" }
         ];
 
-        yearlySalaries.forEach(s => {
-          if (s.amount > 0) {
+        yearlyConfigs.forEach(s => {
+          if (s.income > 0) {
             newConfigs.push({
               user_id: budget.user_id,
               title: `CONFIG:SALARY:${s.year}`,
-              amount: s.amount,
+              amount: s.income,
+              category: "SYSTEM",
+              type: "one-time",
+              status: "paid"
+            });
+          }
+          if (s.budget > 0) {
+            newConfigs.push({
+              user_id: budget.user_id,
+              title: `CONFIG:BUDGET:${s.year}`,
+              amount: s.budget,
+              category: "SYSTEM",
+              type: "one-time",
+              status: "paid"
+            });
+          }
+          if (s.savingsGoal > 0) {
+            newConfigs.push({
+              user_id: budget.user_id,
+              title: `CONFIG:SAVINGS:${s.year}`,
+              amount: s.savingsGoal,
               category: "SYSTEM",
               type: "one-time",
               status: "paid"
@@ -129,7 +156,7 @@ export default function SettingsPage() {
 
         await insforge.database.from("expenses").insert(newConfigs);
         await refetchAll();
-        toast.success("✅ Configuración de perfil y salarios actualizada correctamente.");
+        toast.success("✅ Configuración de perfil y métricas anuales actualizada correctamente.");
       }
     } catch (err) {
       console.error(err);
@@ -247,91 +274,85 @@ export default function SettingsPage() {
             ) : null}
           </div>
 
-          {/* SALARY SECTION */}
-          {profileType !== "desempleado" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-indigo-500" />
-                  Salario Mensual (Por Año)
-                </h3>
-                <button
-                  type="button"
-                  onClick={addYear}
-                  className="flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 px-2 py-1 rounded-lg transition"
-                >
-                  <Plus className="w-3 h-3" />
-                  Agregar Año
-                </button>
-              </div>
+          {/* YEARLY CONFIG SECTION */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-500" />
+                Configuración Financiera (Por Año)
+              </h3>
+              <button
+                type="button"
+                onClick={addYear}
+                className="flex items-center gap-1 text-[10px] uppercase font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 px-2 py-1 rounded-lg transition"
+              >
+                <Plus className="w-3 h-3" />
+                Agregar Año
+              </button>
+            </div>
 
-              {yearlySalaries.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">No has configurado ingresos. Haz clic en "Agregar Año".</p>
-              ) : (
-                <div className="space-y-3">
-                  {yearlySalaries.map((s, idx) => (
-                    <div key={idx} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200 dark:border-slate-800">
-                      <div className="w-24">
-                        <label className="sr-only">Año</label>
-                        <input
-                          type="number"
-                          value={s.year}
-                          onChange={(e) => updateYearSalary(idx, "year", parseInt(e.target.value))}
-                          className="w-full bg-transparent font-black text-indigo-500 text-center focus:outline-none"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="sr-only">Salario</label>
+            {yearlyConfigs.length === 0 ? (
+              <p className="text-xs text-slate-500 italic">No has configurado ingresos ni metas. Haz clic en "Agregar Año".</p>
+            ) : (
+              <div className="space-y-4">
+                {yearlyConfigs.map((s, idx) => (
+                  <div key={idx} className="flex flex-col sm:flex-row gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800 relative group">
+                    <button
+                      type="button"
+                      onClick={() => removeYear(idx)}
+                      className="absolute -top-2 -right-2 p-1.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 border border-slate-200 dark:border-slate-700 rounded-full opacity-0 group-hover:opacity-100 transition shadow-sm"
+                      title="Eliminar este año"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <div className="w-full sm:w-24">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Año</label>
+                      <input
+                        type="number"
+                        value={s.year}
+                        onChange={(e) => updateYearConfig(idx, "year", parseInt(e.target.value))}
+                        className="w-full bg-white dark:bg-slate-950 font-black text-indigo-500 text-center border border-slate-200 dark:border-slate-800 rounded-lg py-2 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {profileType !== "desempleado" && (
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Salario</label>
+                          <CurrencyInput
+                            value={s.income === 0 ? undefined : s.income}
+                            onChange={(val) => updateYearConfig(idx, "income", val as number)}
+                            placeholder="Mensual..."
+                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-2 px-3 focus:outline-none text-sm font-bold"
+                          />
+                        </div>
+                      )}
+                      
+                      <div className={profileType === "desempleado" ? "col-span-2 sm:col-span-1" : ""}>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Presupuesto</label>
                         <CurrencyInput
-                          value={s.amount === 0 ? undefined : s.amount}
-                          onChange={(val) => updateYearSalary(idx, "amount", val as number)}
-                          placeholder="Salario mensual..."
+                          value={s.budget === 0 ? undefined : s.budget}
+                          onChange={(val) => updateYearConfig(idx, "budget", val as number)}
+                          placeholder="Límite..."
                           className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-2 px-3 focus:outline-none text-sm font-bold"
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeYear(idx)}
-                        className="p-2 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      
+                      <div className={profileType === "desempleado" ? "col-span-2 sm:col-span-1" : ""}>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ahorro</label>
+                        <CurrencyInput
+                          value={s.savingsGoal === 0 ? undefined : s.savingsGoal}
+                          onChange={(val) => updateYearConfig(idx, "savingsGoal", val as number)}
+                          placeholder="Meta..."
+                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-2 px-3 focus:outline-none text-sm font-bold"
+                        />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* BUDGET SECTION */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-              <Settings className="w-4 h-4 text-amber-500" />
-              Metas y Presupuestos
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
-                  Meta de Ahorro Mensual
-                </label>
-                <CurrencyInput
-                  value={savingsGoal === "" ? undefined : savingsGoal}
-                  onChange={(val) => setSavingsGoal(val)}
-                  className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-                />
+                  </div>
+                ))}
               </div>
-
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-2">
-                  Presupuesto Límite de Gasto
-                </label>
-                <CurrencyInput
-                  value={budgetLimit === "" ? undefined : budgetLimit}
-                  onChange={(val) => setBudgetLimit(val)}
-                  className="w-full border rounded-xl py-3 focus:outline-none focus:border-indigo-500 text-sm font-bold bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">

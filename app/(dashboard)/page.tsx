@@ -1,142 +1,240 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
 import { useFinance } from "@/providers/finance-provider";
 import { useFinancePeriod } from "@/providers/finance-period-provider";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { HealthAdvisor } from "@/components/dashboard/health-advisor";
+import { DueAlerts } from "@/components/dashboard/due-alerts";
+import { DaySummaryBanner } from "@/components/dashboard/day-summary-banner";
+import { PoolBalanceBanner } from "@/components/budgets/pool-balance-banner";
+import { ModuleHubLinks } from "@/components/shared/module-hub-links";
 import { formatCurrency } from "@/lib/utils";
-import { AlertCircle, CalendarClock } from "lucide-react";
-import { getRecurrentTemplates, getExpenseDateInMonth, isDebtApplicableToMonth, isDebtDeferredInMonth, isDebtPaymentExpense, isDeferDebtExpense, isSystemExpense } from "@/lib/finance-calculations";
+import {
+  DollarSign,
+  TrendingDown,
+  CheckCircle,
+  AlertTriangle,
+  ArrowUpRight,
+  Download,
+  PiggyBank,
+} from "lucide-react";
 
 export default function OverviewPage() {
-  const { month, year } = useFinancePeriod();
-  const { debts, expenses } = useFinance();
+  const { month, year, isCurrentMonth, linkWithPeriod } = useFinancePeriod();
+  const { budget, getMonthlySummary, expenses } = useFinance();
 
-  const pendingItems = useMemo(() => {
-    const items = [];
-    const recurrentTemplates = getRecurrentTemplates(expenses);
-    const recurrentTitles = recurrentTemplates.map((e) => e.title.toLowerCase());
-
-    const paidRecurrents = expenses.filter(
-      (e) =>
-        e.type === "one-time" &&
-        e.status === "paid" &&
-        getExpenseDateInMonth(e, month, year) &&
-        recurrentTitles.includes(e.title.toLowerCase()),
-    );
-
-    for (const temp of recurrentTemplates) {
-      const paymentsForTemp = paidRecurrents.filter(
-        (p) => p.title.toLowerCase() === temp.title.toLowerCase(),
+  const handleExportCSV = () => {
+    const now = new Date();
+    const currentMonth = month;
+    const currentYear = year;
+    const monthExpenses = expenses.filter((e) => {
+      const refDate =
+        e.status === "paid"
+          ? e.paid_date || e.created_at
+          : e.due_date || e.created_at;
+      if (!refDate) return false;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(refDate)) {
+        const [y, m] = refDate.split("-").map(Number);
+        return y === currentYear && m === currentMonth;
+      }
+      const d = new Date(refDate);
+      return (
+        !isNaN(d.getTime()) &&
+        d.getFullYear() === currentYear &&
+        d.getMonth() + 1 === currentMonth
       );
-      const amountPaid = paymentsForTemp.reduce((acc, p) => acc + p.amount, 0);
-      
-      if (amountPaid < temp.amount) {
-        items.push({
-          id: temp.id,
-          title: temp.title,
-          amount: temp.amount - amountPaid,
-          type: 'recurrent',
-          dueDate: temp.due_date,
-        });
-      }
-    }
+    });
+    const headers = [
+      "Concepto",
+      "Monto",
+      "Categoría",
+      "Tipo",
+      "Estado",
+      "Fecha",
+    ];
+    const rows = monthExpenses.map((e) => [
+      `"${e.title.replace(/"/g, '""')}"`,
+      e.amount,
+      e.category,
+      e.type === "recurrent" ? "Fijo" : "Único",
+      e.status === "paid" ? "Pagado" : "Pendiente",
+      e.paid_date || e.due_date || e.created_at || "",
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gastos-${currentYear}-${String(currentMonth).padStart(2, "0")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-    const activeDebts = debts.filter((d) =>
-      isDebtApplicableToMonth(d, month, year, expenses)
-    );
-    const debtPaymentsInMonth = expenses
-      .filter(
-        (e) =>
-          isDebtPaymentExpense(e) &&
-          e.status === "paid" &&
-          getExpenseDateInMonth(e, month, year),
-      )
-      .reduce((acc, e) => acc + e.amount, 0);
+  const summary = useMemo(
+    () => getMonthlySummary(month, year),
+    [getMonthlySummary, month, year],
+  );
 
-    for (const d of activeDebts) {
-      if (isDebtDeferredInMonth(d.id, expenses, month, year)) continue;
+  const {
+    totalIncome,
+    monthSpent,
+    savingsGoal,
+    totalOutstandingDebt,
+    totalInitialDebt,
+    realAvailableCash,
+    extraIncome,
+    totalPendingToPay,
+  } = summary;
 
-      const paid = debtPaymentsInMonth > 0 &&
-        expenses.some(
-          (e) =>
-            isDebtPaymentExpense(e) &&
-            e.status === "paid" &&
-            getExpenseDateInMonth(e, month, year) &&
-            e.title.toLowerCase().includes(d.title.toLowerCase()) &&
-            e.amount >= d.minimum_payment,
-        );
-      if (!paid) {
-        items.push({
-          id: d.id,
-          title: `Cuota: ${d.title}`,
-          amount: d.minimum_payment,
-          type: 'debt',
-          dueDate: d.due_date,
-        });
-      }
-    }
+  const budgetLimit = budget?.monthly_budget || 0;
+  const budgetUsedPct =
+    budgetLimit > 0 ? (monthSpent / budgetLimit) * 100 : 0;
 
-    const oneTimePending = expenses.filter(
-      (e) =>
-        e.type === "one-time" &&
-        e.status === "pending" &&
-        e.category !== "Ingresos" &&
-        getExpenseDateInMonth(e, month, year) &&
-        !recurrentTitles.includes(e.title.toLowerCase()) &&
-        !isDebtPaymentExpense(e) &&
-        !isDeferDebtExpense(e) &&
-        !isSystemExpense(e),
-    );
-
-    for (const e of oneTimePending) {
-      items.push({
-        id: e.id,
-        title: e.title,
-        amount: e.amount,
-        type: 'one-time',
-        dueDate: e.due_date,
-      });
-    }
-
-    return items;
-  }, [expenses, debts, month, year]);
+  const debtPaidPct =
+    totalInitialDebt > 0
+      ? ((totalInitialDebt - totalOutstandingDebt) / totalInitialDebt) * 100
+      : 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-        <CalendarClock className="w-5 h-5 text-indigo-500" />
-        Por vencer en {month}/{year}
-      </h2>
+    <div className="grid grid-cols-1 md:grid-cols-6 xl:grid-cols-12 gap-5 auto-rows-min">
+      {/* Banners and Alerts - Full Width */}
+      <div className="col-span-1 md:col-span-6 xl:col-span-12 space-y-4">
+        <DaySummaryBanner />
+        <PoolBalanceBanner dismissible />
+        <DueAlerts />
+      </div>
 
-      {pendingItems.length === 0 ? (
-        <div className="text-center py-12 border border-dashed rounded-3xl dark:border-slate-800">
-          <p className="text-slate-500 dark:text-slate-400 font-medium">No hay elementos pendientes para este mes.</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {pendingItems.map((item, index) => (
-              <li key={`${item.id}-${index}`} className="p-4 sm:px-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-xl shrink-0 mt-0.5">
-                    <AlertCircle className="w-4 h-4 text-rose-500" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-slate-900 dark:text-slate-100">{item.title}</p>
-                    <p className="text-xs text-slate-500 font-medium flex items-center gap-2 mt-1">
-                      <span className="capitalize">{item.type === 'debt' ? 'Deuda' : item.type === 'recurrent' ? 'Fijo' : 'Único'}</span>
-                      {item.dueDate && <span>• Vence: {item.dueDate}</span>}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-black text-rose-600 dark:text-rose-400">{formatCurrency(item.amount)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+
+      {/* KPIs Principales - Fila 1 (3 cards en desktop) */}
+      <div className="col-span-1 md:col-span-3 xl:col-span-4">
+        <StatCard
+          title="Ingresos del Mes"
+          value={formatCurrency(totalIncome)}
+          variant="success"
+          accentColor="emerald"
+          icon={<DollarSign className="w-4 h-4 text-emerald-500" />}
+          footer={
+            <span className="flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>
+                Base {formatCurrency(summary.baseIncome)}
+                {extraIncome > 0 ? ` + ${formatCurrency(extraIncome)} extra` : ""}
+              </span>
+            </span>
+          }
+        />
+      </div>
+
+      <div className="col-span-1 md:col-span-3 xl:col-span-4">
+        <StatCard
+          title="Disponible Real (Mes)"
+          value={formatCurrency(realAvailableCash)}
+          variant={realAvailableCash >= 0 ? "success" : "danger"}
+          icon={realAvailableCash >= 0 ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <AlertTriangle className="w-4 h-4 text-rose-500" />}
+          footer={
+            realAvailableCash >= 0 ? (
+              <span className="text-slate-500 font-semibold leading-relaxed">
+                Tras gastos pagados, pendientes y ahorro ({formatCurrency(savingsGoal)}).
+              </span>
+            ) : (
+              <span className="text-rose-500 font-bold leading-relaxed">
+                Déficit de {formatCurrency(Math.abs(realAvailableCash))} este mes.
+              </span>
+            )
+          }
+        />
+      </div>
+
+      <div className="col-span-1 md:col-span-3 xl:col-span-4">
+        <StatCard
+          title="Por Pagar (Mes)"
+          value={formatCurrency(totalPendingToPay > 0 ? -totalPendingToPay : 0)}
+          variant={totalPendingToPay > 0 ? "danger" : "default"}
+          icon={<AlertTriangle className="w-4 h-4 text-rose-500" />}
+          footer={
+            <span className="text-slate-500 font-semibold leading-relaxed">
+              Lo que aún falta por pagar.
+            </span>
+          }
+        />
+      </div>
+
+      {/* KPIs Principales - Fila 2 (2 cards en desktop) */}
+      <div className="col-span-1 md:col-span-3 xl:col-span-6">
+        <StatCard
+          title="Pagado (Mes)"
+          value={formatCurrency(monthSpent)}
+          variant={budgetUsedPct > 100 ? "danger" : budgetUsedPct > 80 ? "warning" : "default"}
+          accentColor={budgetUsedPct > 100 ? "rose" : budgetUsedPct > 80 ? "amber" : "indigo"}
+          progressPct={budgetUsedPct}
+          icon={<TrendingDown className="w-4 h-4" />}
+          footer={
+            <span>
+              {budgetLimit > 0
+                ? `${budgetUsedPct.toFixed(0)}% del presupuesto (${formatCurrency(budgetLimit)})`
+                : "Sin tope de presupuesto configurado"}
+            </span>
+          }
+        />
+      </div>
+
+      <div className="col-span-1 md:col-span-6 xl:col-span-6">
+        <StatCard
+          title="Deuda Restante"
+          value={formatCurrency(totalOutstandingDebt)}
+          variant={totalOutstandingDebt > 0 ? "danger" : "success"}
+          accentColor={totalOutstandingDebt > 0 ? "rose" : "emerald"}
+          progressPct={debtPaidPct}
+          icon={<TrendingDown className="w-4 h-4" />}
+          footer={<span>{debtPaidPct.toFixed(0)}% amortizado</span>}
+        />
+      </div>
+
+      {/* AI Health Advisor - Full Width */}
+      <div className="col-span-1 md:col-span-6 xl:col-span-12 flex flex-col gap-5">
+        <HealthAdvisor
+          monthlyIncome={totalIncome}
+          monthlyBudget={budgetLimit}
+          monthlySavingsGoal={savingsGoal}
+          totalSpent={monthSpent}
+          realAvailableCash={realAvailableCash}
+        />
+      </div>
+
+      {/* Modulos y Acciones Rapidas */}
+      <div className="col-span-1 md:col-span-6 xl:col-span-12 mt-4 border-t border-slate-200 dark:border-slate-800 pt-6">
+        <ModuleHubLinks />
+      </div>
+
+      <div className="col-span-1 md:col-span-6 xl:col-span-6">
+        <Link
+          href={linkWithPeriod("/savings")}
+          className="group h-full border rounded-3xl p-6 flex flex-col justify-center gap-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-elegant-hover transition-all duration-300 hover:-translate-y-0.5"
+        >
+          <PiggyBank className="w-8 h-8 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform" />
+          <div>
+            <span className="text-sm font-black block">Ahorro y Estadísticas del Mes</span>
+            <span className="text-xs text-slate-500 font-semibold">Ver metas, DTI y ritmo de presupuesto →</span>
+          </div>
+        </Link>
+      </div>
+      <div className="col-span-1 md:col-span-6 xl:col-span-6">
+        <button
+          type="button"
+          onClick={handleExportCSV}
+          className="group w-full h-full border rounded-3xl p-6 flex flex-col justify-center gap-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-elegant-hover transition-all duration-300 hover:-translate-y-0.5 text-left cursor-pointer"
+        >
+          <Download className="w-8 h-8 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform" />
+          <div>
+            <span className="text-sm font-black block">Exportar mes actual CSV</span>
+            <span className="text-xs text-slate-500 font-semibold">Descarga directa de tus movimientos ↓</span>
+          </div>
+        </button>
+      </div>
     </div>
   );
 }

@@ -205,7 +205,7 @@ export function NovaChatbot() {
   return (
     <>
       {/* Floating Action Button */}
-      <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isOpen ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100"}`}>
+      <div className={`fixed bottom-24 md:bottom-6 right-6 z-50 transition-all duration-300 ${isOpen ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100"}`}>
         <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[1.25rem] blur-md opacity-60 animate-pulse pointer-events-none" />
         <button
           onClick={() => {
@@ -226,7 +226,7 @@ export function NovaChatbot() {
       </div>
 
       {/* Minimized Dock */}
-      <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isOpen && isMinimized ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
+      <div className={`fixed bottom-24 md:bottom-6 right-6 z-50 transition-all duration-300 ${isOpen && isMinimized ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"}`}>
         <div className={`flex items-center gap-2 rounded-full border px-3 py-2 shadow-xl backdrop-blur-xl ${
           theme === "dark" ? "bg-slate-900/95 border-slate-700" : "bg-white/95 border-slate-300"
         }`}>

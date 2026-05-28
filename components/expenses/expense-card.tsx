@@ -143,19 +143,17 @@ export function ExpenseCard({
               <Edit3 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </button>
             
-            <div className="hidden sm:block">
-              <button
-                onClick={() => onDelete(expense.id)}
-                className={`p-2 rounded-lg border transition cursor-pointer \${
-                  theme === "dark"
-                    ? "bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500 border-slate-700/60 hover:border-rose-500/20 text-slate-400"
-                    : "bg-slate-100 hover:bg-rose-500/10 hover:text-rose-500 border-slate-200 hover:border-rose-500/20 text-slate-500"
-                }`}
-                title="Eliminar Gasto"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={() => onDelete(expense.id)}
+              className={`p-1.5 sm:p-2 rounded-lg border transition cursor-pointer \${
+                theme === "dark"
+                  ? "bg-slate-800 hover:bg-rose-500/10 hover:text-rose-500 border-slate-700/60 hover:border-rose-500/20 text-slate-400"
+                  : "bg-slate-100 hover:bg-rose-500/10 hover:text-rose-500 border-slate-200 hover:border-rose-500/20 text-slate-500"
+              }`}
+              title="Eliminar Gasto"
+            >
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
           </div>
         </div>
       </motion.div>

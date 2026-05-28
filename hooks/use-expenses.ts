@@ -108,7 +108,7 @@ export function useExpenses(userId: string | undefined) {
       paid_date: payload.status === "paid" ? payload.paid_date || new Date().toISOString() : null,
     };
 
-    if (isPastMonth(newPayload as Expense)) {
+    if (newPayload.type !== "recurrent" && isPastMonth(newPayload as Expense)) {
       toast.error("No se pueden crear transacciones en meses anteriores al actual.");
       return null;
     }
@@ -157,7 +157,7 @@ export function useExpenses(userId: string | undefined) {
     if (!userId) return null;
     
     const existing = expenses.find((e) => e.id === id);
-    if (existing && isPastMonth(existing)) {
+    if (existing && existing.type !== "recurrent" && isPastMonth(existing)) {
       if (existing.status === "paid") {
         toast.error("El mes ya cerró: no puedes editar un gasto pagado en el pasado.");
         return null;
@@ -210,7 +210,7 @@ export function useExpenses(userId: string | undefined) {
 
   const deleteExpense = async (id: string) => {
     const existing = expenses.find((e) => e.id === id);
-    if (existing && isPastMonth(existing) && existing.status === "paid") {
+    if (existing && existing.type !== "recurrent" && isPastMonth(existing) && existing.status === "paid") {
       toast.error("El mes ya cerró: no puedes eliminar un gasto pagado en el pasado.");
       return false;
     }
